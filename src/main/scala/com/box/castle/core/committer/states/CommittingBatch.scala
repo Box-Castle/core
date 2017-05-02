@@ -6,9 +6,10 @@ import com.box.castle.collections._
 import com.box.castle.committer.api._
 import com.box.castle.consumer.LatestOffset
 import com.box.castle.core.committer._
+import com.box.castle.core.committer.manager.BatchSizeManager
 import com.box.castle.core.const
 import com.box.castle.router.RouterRequestManager
-import com.box.castle.router.messages.{OffsetAndMetadata, CommitConsumerOffset, FetchOffset}
+import com.box.castle.router.messages.{CommitConsumerOffset, FetchOffset, OffsetAndMetadata}
 import org.slf4s.Logging
 
 import scala.concurrent.Future
@@ -33,6 +34,10 @@ trait CommittingBatch extends CommitterActorBase
 
   // Set of committers that have not successfully committed their message batch yet
   private var pendingCommitters = Set.empty[Committer]
+
+  // Keeps track of reads and configures delays before next fetch
+  private[core] var batchSizeManager = new BatchSizeManager(committerConfig.samplingSlots,
+    committerConfig.samplingInterval, castleConfig.bufferSizeInBytes)
 
   /**
    * A batch will be splited evenly into chunks based on the parallelism factor
@@ -118,7 +123,11 @@ trait CommittingBatch extends CommitterActorBase
     // We commit the consumer offset here without waiting on the result, we are assuming it will succeed most of the time
     commitConsumerOffset(batch.nextOffset, metadata)
 
-    becomeFetchingData(OffsetAndMetadata(batch.nextOffset, metadata))
+    // If BatchSizeManager is enabled then goto Idling state with a specific delay
+    if(committerConfig.useBatchSizeManager)
+      becomeIdling(OffsetAndMetadata(batch.nextOffset, metadata), Some(batchSizeManager.getDelay))
+    else
+      becomeFetchingData(OffsetAndMetadata(batch.nextOffset, metadata))
   }
 
   private def receiveUserCommitterException(t: Throwable, endTime: Long): Unit = {
@@ -152,6 +161,10 @@ trait CommittingBatch extends CommitterActorBase
   override def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], batch: CastleMessageBatch, metadata: Option[String]): Unit = {
     // We fetch the latest offset in the topic here so we can compute the offset lag
     sendRequestToRouter(FetchOffset(LatestOffset, topicAndPartition))
+
+    // Track bytes read from Kafka if BatchSizeManager is enabled
+    if(committerConfig.useBatchSizeManager)
+      batchSizeManager.track(batch.sizeInBytes, System.currentTimeMillis())
 
     commitStartTime = System.nanoTime()
     context.become(committingBatch)

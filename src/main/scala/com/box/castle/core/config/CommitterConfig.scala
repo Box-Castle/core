@@ -27,7 +27,10 @@ case class CommitterConfig(private val idRaw: String,
                            parallelismFactor: Int = DefaultParallelismFactor,
                            parallelismFactorByTopic: Map[String, Int] = DefaultParallelismFactorByTopic,
                            corruptMessagePolicy: CorruptMessagePolicy = DefaultCorruptMessagePolicy,
-                           useKafkaMetadataManager: Boolean = DefaultUseKafkaMetadataManager) {
+                           useKafkaMetadataManager: Boolean = DefaultUseKafkaMetadataManager,
+                           samplingSlots: Int = DefaultSamplingSlots,
+                           samplingInterval: Long = DefaultSamplingInterval,
+                           useBatchSizeManager: Boolean = DefaultUseBatchSizeManager) {
   val id = idRaw.trim()
   require(id.nonEmpty, "Committer id must have at least one character")
   require(id.replaceAll("[^A-Za-z0-9-_]", "_") == id, "Committer id must consist of alphanumeric characters, dashes (-), and underscores (_)")
@@ -35,6 +38,8 @@ case class CommitterConfig(private val idRaw: String,
   require(topicsRegexRaw.isDefined || topicsSet.isDefined, "Must specify either a topics set or regex")
 
   require(parallelismFactor >= 1, "Parallelism factor must be 1 or greater")
+
+  require(samplingSlots > 1, "Sampling Slots should be greater than 1")
 
   parallelismFactorByTopic.foreach {
     case (topic, factor) => {
@@ -75,4 +80,7 @@ object CommitterConfig {
   val DefaultParallelismFactorByTopic = Map.empty[String, Int]
   val DefaultCorruptMessagePolicy = CorruptMessagePolicy.skip
   val DefaultUseKafkaMetadataManager = true
+  val DefaultUseBatchSizeManager = false
+  val DefaultSamplingSlots = 20
+  val DefaultSamplingInterval = 60000 // milliseconds
 }

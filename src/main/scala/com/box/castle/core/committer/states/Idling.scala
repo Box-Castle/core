@@ -53,10 +53,11 @@ trait Idling extends CommitterActorBase with CommitterActorStates with OffsetLag
    *
    * Heartbeat is triggered if it is configured to do so if no data is fetched
    *
-   * @param offset
+   * @param offsetAndMetadata
    */
-  override def becomeIdling(offsetAndMetadata: OffsetAndMetadata): Unit = {
-    val delay = generateFetchDelay()
+  override def becomeIdling(offsetAndMetadata: OffsetAndMetadata, delayOption: Option[Duration]): Unit = {
+
+    val delay: Duration = delayOption.getOrElse(generateFetchDelay())
     context.become(idling)
 
     configuredHeartbeatDuration match {
