@@ -29,7 +29,10 @@ case class CommitterConfig(private val idRaw: String,
                            corruptMessagePolicy: CorruptMessagePolicy = DefaultCorruptMessagePolicy,
                            useKafkaMetadataManager: Boolean = DefaultUseKafkaMetadataManager,
                            samplingSlots: Int = DefaultSamplingSlots,
-                           samplingInterval: Long = DefaultSamplingInterval,
+                           samplingInterval: Duration = DefaultSamplingInterval,
+                           maxWaitTime: Duration = DefaultMaxWaitTime,
+                           discountFactor: Double = DefaultDiscountFactor,
+                           fullBufferThresholdCount: Int = DefaultFullBufferThresholdCount,
                            useBatchSizeManager: Boolean = DefaultUseBatchSizeManager) {
   val id = idRaw.trim()
   require(id.nonEmpty, "Committer id must have at least one character")
@@ -40,6 +43,8 @@ case class CommitterConfig(private val idRaw: String,
   require(parallelismFactor >= 1, "Parallelism factor must be 1 or greater")
 
   require(samplingSlots > 1, "Sampling Slots should be greater than 1")
+
+  require(discountFactor > 0 && discountFactor < 1, "Discount Factor should range between 0 to 1")
 
   parallelismFactorByTopic.foreach {
     case (topic, factor) => {
@@ -82,5 +87,8 @@ object CommitterConfig {
   val DefaultUseKafkaMetadataManager = true
   val DefaultUseBatchSizeManager = false
   val DefaultSamplingSlots = 20
-  val DefaultSamplingInterval = 60000 // milliseconds
+  val DefaultSamplingInterval = new Duration(60000) // 1 second
+  val DefaultMaxWaitTime = new Duration(300000) // 5 minutes
+  val DefaultDiscountFactor = 0.9
+  val DefaultFullBufferThresholdCount = 3
 }
