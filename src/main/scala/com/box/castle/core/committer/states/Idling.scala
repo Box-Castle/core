@@ -28,8 +28,6 @@ trait Idling extends CommitterActorBase with CommitterActorStates with OffsetLag
 
   import Idling._
 
-  val noDataRetryStrategy = committerFactory.noDataBackoffStrategy
-
   // heartbeat if custom user committer has heartbeat time set
   //   heartbeatTime is an option where None means we do not heartbeat
   //   and Some(t) means heartbeat with duration t
@@ -39,10 +37,6 @@ trait Idling extends CommitterActorBase with CommitterActorStates with OffsetLag
 
   private var lastHeartbeatTime = ZEROTIME
   private var nextDataFetchTime = ZEROTIME
-
-  // this is the delay before the next data fetch after a no data fetch occurs
-  private[core] def generateFetchDelay(): Duration =
-    new Duration(noDataRetryStrategy.delay(0).toMillis)
 
   /**
    * Convenience method to get current time, easily overwritten for testing
@@ -55,9 +49,8 @@ trait Idling extends CommitterActorBase with CommitterActorStates with OffsetLag
    *
    * @param offsetAndMetadata
    */
-  override def becomeIdling(offsetAndMetadata: OffsetAndMetadata, delayOption: Option[Duration]): Unit = {
+  override def becomeIdling(offsetAndMetadata: OffsetAndMetadata, delay: Duration): Unit = {
 
-    val delay: Duration = delayOption.getOrElse(generateFetchDelay())
     context.become(idling)
 
     configuredHeartbeatDuration match {
@@ -67,8 +60,7 @@ trait Idling extends CommitterActorBase with CommitterActorStates with OffsetLag
       }
       case None => {
         // heartbeat is not enabled
-        log.info(s"$committerActorId got 0 messages for offset: ${offsetAndMetadata.offset}, backing off for $delay")
-        scheduleOnce(new FiniteDuration(delay.getMillis(), MILLISECONDS), FetchDataAfterDelay(offsetAndMetadata))
+        scheduleOnce(new FiniteDuration(delay.getMillis, MILLISECONDS), FetchDataAfterDelay(offsetAndMetadata))
       }
     }
   }

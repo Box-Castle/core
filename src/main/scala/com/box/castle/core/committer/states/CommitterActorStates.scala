@@ -44,7 +44,7 @@ trait CommitterActorStates {
 
   def shuttingDown: Receive
 
-  def becomeIdling(offsetAndMetadata: OffsetAndMetadata, delayOption: Option[Duration] = None): Unit
+  def becomeIdling(offsetAndMetadata: OffsetAndMetadata, delay: Duration): Unit
 
   def idling: Receive
 }

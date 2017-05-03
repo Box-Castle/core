@@ -3,7 +3,9 @@ package com.box.castle.core.common
 import scala.collection.mutable
 
 /**
-  * Queue with a fixed upper bound on capacity
+  * Queue with a fixed upper bound on capacity.
+  *
+  * NOTE: This data structure is not thread safe.
   */
 class BoundedQueue[T](capacity: Int) extends mutable.Queue[T] {
 
@@ -25,6 +27,10 @@ class BoundedQueue[T](capacity: Int) extends mutable.Queue[T] {
 
   override def enqueue(elems: T*): Unit = {
     this ++= elems
+  }
+
+  def isFull: Boolean = {
+    super.size == capacity
   }
 
 }
