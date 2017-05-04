@@ -16,6 +16,7 @@ class BatchSizeManager(committerConfig: CommitterConfig,
 
   private val samples = new BoundedQueue[ReadSample](committerConfig.samplingSlots)
   private var consecutiveFullBuffers = 0
+  private val zeroByteSample = ReadSample(0, 0)
 
   /**
     * Tracks bytes read from kafka and the corresponding timestamp based on specified sampling rate
@@ -34,14 +35,13 @@ class BatchSizeManager(committerConfig: CommitterConfig,
       consecutiveFullBuffers = 0
     }
 
+    // If queue is full then we add a new sample only after sampling interval
     if (!samples.isFull || timestamp - samples.last.timestamp >= committerConfig.samplingInterval.getMillis) {
-      // If queue is full then we add a new sample only after sampling interval
+
       // The bytes read is cumulative here so the new sample adds on to the last samples bytesRead
-      // This makes computation of rate more efficient
-      if (samples.isEmpty)
-        samples.enqueue(ReadSample(bytesRead, timestamp))
-      else
-        samples.enqueue(ReadSample(samples.last.bytesRead + bytesRead, timestamp))
+      // This makes computation of rate more efficient during getDelay
+      val sample = ReadSample(samples.lastOption.getOrElse(zeroByteSample).bytesRead + bytesRead, timestamp)
+      samples.enqueue(sample)
     }
 
     if (consecutiveFullBuffers > committerConfig.fullBufferThresholdCount) {
@@ -64,13 +64,13 @@ class BatchSizeManager(committerConfig: CommitterConfig,
       val dataRead: Double = samples.last.bytesRead - samples.front.bytesRead
       val elapsedTime: Double = samples.last.timestamp - samples.front.timestamp
       val rate: Double = dataRead / elapsedTime
-      val delay = bufferSize / rate
+      val delay = (bufferSize * committerConfig.targetBatchSizePercent) / rate
 
       // The discount factor reduces delay based on how many consecutive full buffers we have seen.
-      val discount = Math.pow(committerConfig.discountFactor, consecutiveFullBuffers + 1)
+      val discount = Math.pow(committerConfig.discountFactor, consecutiveFullBuffers)
       val computedDelay = Math.min(committerConfig.maxWaitTime.getMillis, (delay * discount).toLong)
 
-      log.info(s"$committerActorId: Idling for ${computedDelay / 1000} seconds after calculating a rate of ${"%.3f".format(rate)} KiB/sec with discountFactor of ${"%.3f".format(discount)}")
+      log.info(s"$committerActorId: Idling for ${computedDelay / 1000} seconds after calculating a rate of ${"%.3f".format(rate / 1048.576)} MiB/sec with discountFactor of ${"%.3f".format(discount)}")
       new Duration(computedDelay)
     }
     else {

@@ -36,7 +36,7 @@ trait CommittingBatch extends CommitterActorBase
   private var pendingCommitters = Set.empty[Committer]
 
   // Keeps track of reads and configures delays before next fetch
-  private val batchSizeManagerOption = if(committerConfig.useBatchSizeManager)
+  private val batchSizeManagerOption = if(committerConfig.targetBatchSizePercent > 0)
     Some(new BatchSizeManager(committerConfig, castleConfig.bufferSizeInBytes)) else None
 
   /**
@@ -129,8 +129,10 @@ trait CommittingBatch extends CommitterActorBase
         val delay = batchSizeManager.getDelay(committerActorId)
         if(delay.getMillis > 0)
           becomeIdling(OffsetAndMetadata(batch.nextOffset, metadata), delay)
-        else
+        else {
+          log.info(s"$committerActorId fetching immediately because BatchSizeManager returned a delay of 0")
           becomeFetchingData(OffsetAndMetadata(batch.nextOffset, metadata))
+        }
       case None =>
         becomeFetchingData(OffsetAndMetadata(batch.nextOffset, metadata))
     }
