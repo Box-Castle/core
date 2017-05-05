@@ -27,7 +27,13 @@ case class CommitterConfig(private val idRaw: String,
                            parallelismFactor: Int = DefaultParallelismFactor,
                            parallelismFactorByTopic: Map[String, Int] = DefaultParallelismFactorByTopic,
                            corruptMessagePolicy: CorruptMessagePolicy = DefaultCorruptMessagePolicy,
-                           useKafkaMetadataManager: Boolean = DefaultUseKafkaMetadataManager) {
+                           useKafkaMetadataManager: Boolean = DefaultUseKafkaMetadataManager,
+                           samplingSlots: Int = DefaultSamplingSlots,
+                           samplingInterval: Duration = DefaultSamplingInterval,
+                           maxWaitTime: Duration = DefaultMaxWaitTime,
+                           discountFactor: Double = DefaultDiscountFactor,
+                           fullBufferThresholdCount: Int = DefaultFullBufferThresholdCount,
+                           targetBatchSizePercent: Double = DefaultTargetBatchSizePercent) {
   val id = idRaw.trim()
   require(id.nonEmpty, "Committer id must have at least one character")
   require(id.replaceAll("[^A-Za-z0-9-_]", "_") == id, "Committer id must consist of alphanumeric characters, dashes (-), and underscores (_)")
@@ -35,6 +41,10 @@ case class CommitterConfig(private val idRaw: String,
   require(topicsRegexRaw.isDefined || topicsSet.isDefined, "Must specify either a topics set or regex")
 
   require(parallelismFactor >= 1, "Parallelism factor must be 1 or greater")
+
+  require(samplingSlots > 1, "Sampling Slots should be greater than 1")
+
+  require(discountFactor > 0 && discountFactor < 1, "Discount Factor should range between 0 to 1")
 
   parallelismFactorByTopic.foreach {
     case (topic, factor) => {
@@ -75,4 +85,10 @@ object CommitterConfig {
   val DefaultParallelismFactorByTopic = Map.empty[String, Int]
   val DefaultCorruptMessagePolicy = CorruptMessagePolicy.skip
   val DefaultUseKafkaMetadataManager = true
+  val DefaultTargetBatchSizePercent = 0
+  val DefaultSamplingSlots = 20
+  val DefaultSamplingInterval = new Duration(60000) // 1 minute
+  val DefaultMaxWaitTime = new Duration(300000) // 5 minutes
+  val DefaultDiscountFactor = 0.8
+  val DefaultFullBufferThresholdCount = 3
 }

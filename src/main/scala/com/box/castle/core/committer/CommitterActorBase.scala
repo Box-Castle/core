@@ -1,9 +1,9 @@
 package com.box.castle.core.committer
 
 import akka.actor.Actor
-import com.box.castle.committer.api.{CommitterFactory, Committer, UnrecoverableException}
+import com.box.castle.committer.api.{Committer, CommitterFactory, UnrecoverableException}
 import com.box.castle.consumer.ConsumerId
-import com.box.castle.core.config.CommitterConfig
+import com.box.castle.core.config.{CastleConfig, CommitterConfig}
 import com.box.castle.core.const
 import com.box.castle.metrics.MetricsLogger
 import com.box.castle.retry.{RetryAsync, RetryStrategy}
@@ -14,8 +14,7 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.{Exception, NonFatal}
-
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 
 trait CommitterActorBase {
@@ -34,6 +33,8 @@ trait CommitterActorBase {
   def committerActorId: String
 
   def committerConfig: CommitterConfig
+
+  def castleConfig: CastleConfig
 
   implicit def ec: ExecutionContext
 

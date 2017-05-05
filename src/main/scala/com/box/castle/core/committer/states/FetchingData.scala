@@ -6,18 +6,25 @@ import com.box.castle.core.committer._
 import com.box.castle.core.config.{CorruptMessagePolicy, OffsetOutOfRangePolicy}
 import com.box.castle.core.const
 import com.box.castle.router.RouterRequestManager
-import com.box.castle.router.messages.{OffsetAndMetadata, CommitConsumerOffset, FetchData, FetchOffset}
-
+import com.box.castle.router.messages.{FetchData, FetchOffset, OffsetAndMetadata}
+import org.joda.time.Duration
 import org.slf4s.Logging
 
 
 trait FetchingData extends CommitterActorBase
-    with CommitterActorStates
-    with OffsetLagTracker {
+  with CommitterActorStates
+  with OffsetLagTracker {
   self: Actor with RouterRequestManager with Logging =>
 
   private var fetchStartTime: Long = 0
   private[core] var consumerMetadata: Option[String] = None
+
+  val noDataRetryStrategy = committerFactory.noDataBackoffStrategy
+
+  // this is the delay before the next data fetch after a no data fetch occurs
+  private[core] def generateFetchDelay(): Duration =
+    new Duration(noDataRetryStrategy.delay(0).toMillis)
+
 
   private def receiveFetchDataResult(result: FetchData.Result): Unit = {
     time(const.Metrics.FetchTime, System.nanoTime() - fetchStartTime)
@@ -26,7 +33,11 @@ trait FetchingData extends CommitterActorBase
       case success: FetchData.Success => {
         becomePreparingToCommitBatch(success.batch, consumerMetadata)
       }
-      case noMessages: FetchData.NoMessages => becomeIdling(OffsetAndMetadata(noMessages.offset,consumerMetadata))
+      case noMessages: FetchData.NoMessages => {
+        val delay = generateFetchDelay()
+        log.info(s"$committerActorId got 0 messages for offset: ${noMessages.offset}, backing off for $delay")
+        becomeIdling(OffsetAndMetadata(noMessages.offset, consumerMetadata), delay)
+      }
       case FetchData.UnknownTopicOrPartition(failedTopicAndPartition, failedOffset) => {
         val msg = s"$committerActorId encountered an unknown topic or partition error " +
           s"when attempting to fetch data for: $failedTopicAndPartition, $failedOffset"
@@ -53,13 +64,13 @@ trait FetchingData extends CommitterActorBase
             log.warn(s"$committerActorId encountered and skipped a corrupt message at offset $offset " +
               s"as specified by the CorruptMessagePolicy")
             count(const.Metrics.CorruptMessagesSkipped)
-            becomeFetchingData(OffsetAndMetadata(nextOffset,consumerMetadata))
+            becomeFetchingData(OffsetAndMetadata(nextOffset, consumerMetadata))
           }
           case CorruptMessagePolicy.retry => {
             log.warn(s"$committerActorId encountered a corrupt message at offset $offset " +
               s"and is fetching this offset again as specified by the CorruptMessagePolicy")
             // TODO: This should be fetched with a delay specified a strategy provided by the committer factory
-            becomeFetchingData(OffsetAndMetadata(offset,consumerMetadata))
+            becomeFetchingData(OffsetAndMetadata(offset, consumerMetadata))
           }
           case CorruptMessagePolicy.fail => {
             throw new UnrecoverableCommitterActorException(committerConfig.id, s"$committerActorId encountered a " +
