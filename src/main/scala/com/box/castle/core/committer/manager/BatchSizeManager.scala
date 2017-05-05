@@ -70,7 +70,7 @@ class BatchSizeManager(committerConfig: CommitterConfig,
       val discount = Math.pow(committerConfig.discountFactor, consecutiveFullBuffers)
       val computedDelay = Math.min(committerConfig.maxWaitTime.getMillis, (delay * discount).toLong)
 
-      log.info(s"$committerActorId: Idling for ${computedDelay / 1000} seconds after calculating a rate of ${"%.3f".format(rate / 1048.576)} MiB/sec with discountFactor of ${"%.3f".format(discount)}")
+      log.info(s"$committerActorId idling for ${computedDelay / 1000} seconds after calculating a rate of ${"%.3f".format(rate / 1048.576)} MiB/sec with discountFactor of ${"%.3f".format(discount)}")
       new Duration(computedDelay)
     }
     else {

@@ -85,7 +85,7 @@ object CommitterConfig {
   val DefaultParallelismFactorByTopic = Map.empty[String, Int]
   val DefaultCorruptMessagePolicy = CorruptMessagePolicy.skip
   val DefaultUseKafkaMetadataManager = true
-  val DefaultTargetBatchSizePercent = 0.9
+  val DefaultTargetBatchSizePercent = 0
   val DefaultSamplingSlots = 20
   val DefaultSamplingInterval = new Duration(60000) // 1 minute
   val DefaultMaxWaitTime = new Duration(300000) // 5 minutes
