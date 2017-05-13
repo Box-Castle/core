@@ -9,7 +9,9 @@ import com.box.castle.core.committer._
 import com.box.castle.core.committer.manager.BatchSizeManager
 import com.box.castle.core.const
 import com.box.castle.router.RouterRequestManager
-import com.box.castle.router.messages.{CommitConsumerOffset, FetchOffset, OffsetAndMetadata}
+import com.box.castle.router.messages.FetchData.Response
+import com.box.castle.router.messages.{CommitConsumerOffset, FetchData, FetchOffset, OffsetAndMetadata}
+import org.joda.time.Duration
 import org.slf4s.Logging
 
 import scala.concurrent.Future
@@ -38,6 +40,11 @@ trait CommittingBatch extends CommitterActorBase
   // Keeps track of reads and configures delays before next fetch
   private val batchSizeManagerOption = if(committerConfig.targetBatchSizePercent > 0)
     Some(new BatchSizeManager(committerConfig, castleConfig.bufferSizeInBytes)) else None
+
+  val noDataRetryStrategy = committerFactory.noDataBackoffStrategy
+
+  // this is the delay before the next data fetch after a no data fetch occurs
+  private[core] def generateFetchDelay(): Duration =  new Duration(noDataRetryStrategy.delay(0).toMillis)
 
   /**
    * A batch will be splited evenly into chunks based on the parallelism factor
@@ -166,17 +173,33 @@ trait CommittingBatch extends CommitterActorBase
     commitChunksWithCommitters(chunksAndCommitters, batch, metadata)
   }
 
-  override def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], batch: CastleMessageBatch, metadata: Option[String]): Unit = {
-    // We fetch the latest offset in the topic here so we can compute the offset lag
-    sendRequestToRouter(FetchOffset(LatestOffset, topicAndPartition))
+  override def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], message: Response, metadata: Option[String]): Unit = {
+    message match {
+      case noMessages: FetchData.NoMessages =>
+        // Got 0 Bytes so we got Idling state for a some delay before refetching
+        val delay = generateFetchDelay()
+        log.info(s"$committerActorId got 0 messages for offset: ${noMessages.offset}, backing off for $delay")
 
-    // Track bytes read from Kafka if BatchSizeManager is enabled
-    batchSizeManagerOption.foreach(_.track(batch.sizeInBytes, System.currentTimeMillis()))
+        // Track when we get 0 bytes from kafka in batchSizeManager
+        batchSizeManagerOption.foreach(_.track(None, System.currentTimeMillis()))
 
-    commitStartTime = System.nanoTime()
-    context.become(committingBatch)
+        becomeIdling(OffsetAndMetadata(noMessages.offset, metadata), delay)
 
-    commitBatch(userCommitters, batch, metadata)
+      case success: FetchData.Success =>
+        // We fetch the latest offset in the topic here so we can compute the offset lag
+        sendRequestToRouter(FetchOffset(LatestOffset, topicAndPartition))
+
+        // Track bytes read from Kafka if BatchSizeManager is enabled
+        batchSizeManagerOption.foreach(_.track(Some(success.batch.sizeInBytes), System.currentTimeMillis()))
+
+        commitStartTime = System.nanoTime()
+        context.become(committingBatch)
+
+        commitBatch(userCommitters, success.batch, metadata)
+
+      case _ =>
+        throw new UnrecoverableCommitterActorException(committerConfig.id, "Received invalid message that cannot be handled by actor.")
+    }
   }
 
   override def committingBatch: Receive = {

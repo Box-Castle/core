@@ -7,7 +7,6 @@ import com.box.castle.core.config.{CorruptMessagePolicy, OffsetOutOfRangePolicy}
 import com.box.castle.core.const
 import com.box.castle.router.RouterRequestManager
 import com.box.castle.router.messages.{FetchData, FetchOffset, OffsetAndMetadata}
-import org.joda.time.Duration
 import org.slf4s.Logging
 
 
@@ -19,25 +18,17 @@ trait FetchingData extends CommitterActorBase
   private var fetchStartTime: Long = 0
   private[core] var consumerMetadata: Option[String] = None
 
-  val noDataRetryStrategy = committerFactory.noDataBackoffStrategy
-
-  // this is the delay before the next data fetch after a no data fetch occurs
-  private[core] def generateFetchDelay(): Duration =
-    new Duration(noDataRetryStrategy.delay(0).toMillis)
-
-
   private def receiveFetchDataResult(result: FetchData.Result): Unit = {
     time(const.Metrics.FetchTime, System.nanoTime() - fetchStartTime)
 
     checkResult(result) {
-      case success: FetchData.Success => {
-        becomePreparingToCommitBatch(success.batch, consumerMetadata)
-      }
-      case noMessages: FetchData.NoMessages => {
-        val delay = generateFetchDelay()
-        log.info(s"$committerActorId got 0 messages for offset: ${noMessages.offset}, backing off for $delay")
-        becomeIdling(OffsetAndMetadata(noMessages.offset, consumerMetadata), delay)
-      }
+
+      case success: FetchData.Success =>
+        becomePreparingToCommitBatch(success, consumerMetadata)
+
+      case noMessages: FetchData.NoMessages =>
+        becomePreparingToCommitBatch(noMessages, consumerMetadata)
+
       case FetchData.UnknownTopicOrPartition(failedTopicAndPartition, failedOffset) => {
         val msg = s"$committerActorId encountered an unknown topic or partition error " +
           s"when attempting to fetch data for: $failedTopicAndPartition, $failedOffset"

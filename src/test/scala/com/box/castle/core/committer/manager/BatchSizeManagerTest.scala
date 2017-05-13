@@ -17,7 +17,7 @@ class BatchSizeManagerTest extends Specification {
   val targetBatchSize = 0.9
   val committerConfig = CommitterConfig("dummyId","dummyClass",Map.empty,None, Some(Set("dummyTopic")), None,
     targetBatchSizePercent = targetBatchSize, samplingSlots = samplingSlots, samplingInterval = samplingInterval,
-    maxWaitTime = maxWaitTime, discountFactor = discountFactor, fullBufferThresholdCount = threshold)
+    maxWaitTime = maxWaitTime, discountFactor = discountFactor, fullBufferThresholdCount = threshold, emptyBufferThresholdCount = threshold)
 
   "track" should {
     "track all samples initially when queue is not full" in {
@@ -28,9 +28,9 @@ class BatchSizeManagerTest extends Specification {
       val batchSizeManager = new BatchSizeManager(committerConfig, bufferSize)
 
       // Execute
-      batchSizeManager.track(bytesRead, System.currentTimeMillis())
-      batchSizeManager.track(bytesRead, System.currentTimeMillis())
-      batchSizeManager.track(bytesRead, System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead), System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead), System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead), System.currentTimeMillis())
 
       // Validate
       // All samples should be tracked since queue is initially empty
@@ -46,19 +46,19 @@ class BatchSizeManagerTest extends Specification {
       val batchSizeManager = new BatchSizeManager(committerConfig, bufferSize)
 
       // Execute
-      batchSizeManager.track(bytesRead, System.currentTimeMillis())
-      batchSizeManager.track(bytesRead, System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead), System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead), System.currentTimeMillis())
       val lastTimestamp = System.currentTimeMillis()
-      batchSizeManager.track(bytesRead, lastTimestamp)
+      batchSizeManager.track(Some(bytesRead), lastTimestamp)
       // This should be discarded as sampling interval is 1 min
-      batchSizeManager.track(bytesRead, lastTimestamp + 1000)
+      batchSizeManager.track(Some(bytesRead), lastTimestamp + 1000)
 
       // Validate
       batchSizeManager.size shouldEqual samplingSlots
       batchSizeManager.getLastSample.bytesRead shouldEqual 120
 
       // This sample should be added
-      batchSizeManager.track(bytesRead, lastTimestamp + 70000)
+      batchSizeManager.track(Some(bytesRead), lastTimestamp + 70000)
       batchSizeManager.size shouldEqual samplingSlots
       batchSizeManager.getLastSample.bytesRead shouldEqual 160
 
@@ -74,9 +74,9 @@ class BatchSizeManagerTest extends Specification {
 
       // Execute
       val ts = System.currentTimeMillis()
-      batchSizeManager.track(bytesRead, ts)
-      batchSizeManager.track(bytesRead, ts + 100)
-      batchSizeManager.track(bytesRead, ts + 200)
+      batchSizeManager.track(Some(bytesRead), ts)
+      batchSizeManager.track(Some(bytesRead), ts + 100)
+      batchSizeManager.track(Some(bytesRead), ts + 200)
 
       // Validate
       val expectedResult = (bufferSize * targetBatchSize) / 0.1
@@ -91,12 +91,12 @@ class BatchSizeManagerTest extends Specification {
 
       // Execute
       val ts = System.currentTimeMillis()
-      batchSizeManager.track(bytesRead, ts)
-      batchSizeManager.track(bytesRead, ts + 100)
-      batchSizeManager.track(bytesRead, ts + 200)
+      batchSizeManager.track(Some(bytesRead), ts)
+      batchSizeManager.track(Some(bytesRead), ts + 100)
+      batchSizeManager.track(Some(bytesRead), ts + 200)
       // Adding 2 full buffer reads
-      batchSizeManager.track(bufferSize, ts + 300)
-      batchSizeManager.track(bufferSize, ts + 500)
+      batchSizeManager.track(Some(bufferSize), ts + 300)
+      batchSizeManager.track(Some(bufferSize), ts + 500)
 
       // Validate
       val expectedResult = ((bufferSize * targetBatchSize) / 0.1) * Math.pow(discountFactor,2)
@@ -115,7 +115,7 @@ class BatchSizeManagerTest extends Specification {
       batchSizeManager.getDelay("dummyCommitter").getMillis shouldEqual 0
 
       // Add one sample
-      batchSizeManager.track(bytesRead, System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead), System.currentTimeMillis())
 
       batchSizeManager.getDelay("dummyCommitter").getMillis shouldEqual 0
 
@@ -128,12 +128,32 @@ class BatchSizeManagerTest extends Specification {
       val batchSizeManager = new BatchSizeManager(committerConfig, bufferSize)
 
       // Execute
-      batchSizeManager.track(bytesRead,System.currentTimeMillis())
-      batchSizeManager.track(bytesRead,System.currentTimeMillis())
-      batchSizeManager.track(bufferSize,System.currentTimeMillis())
-      batchSizeManager.track(bufferSize,System.currentTimeMillis())
-      batchSizeManager.track(bufferSize,System.currentTimeMillis())
-      batchSizeManager.track(bufferSize,System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead),System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead),System.currentTimeMillis())
+      batchSizeManager.track(Some(bufferSize),System.currentTimeMillis())
+      batchSizeManager.track(Some(bufferSize),System.currentTimeMillis())
+      batchSizeManager.track(Some(bufferSize),System.currentTimeMillis())
+      batchSizeManager.track(Some(bufferSize),System.currentTimeMillis())
+
+      // Validate
+      batchSizeManager.getDelay("dummyCommitter").getMillis shouldEqual 0
+      batchSizeManager.size shouldEqual 0
+
+    }
+
+    "return zero delay if we have seen fixed number of consecutive empty buffer reads" in {
+      // Setup
+      val bufferSize = 100 //bytes
+      val bytesRead = 10
+      val batchSizeManager = new BatchSizeManager(committerConfig, bufferSize)
+
+      // Execute
+      batchSizeManager.track(Some(bytesRead),System.currentTimeMillis())
+      batchSizeManager.track(Some(bytesRead),System.currentTimeMillis())
+      batchSizeManager.track(None,System.currentTimeMillis())
+      batchSizeManager.track(None,System.currentTimeMillis())
+      batchSizeManager.track(None,System.currentTimeMillis())
+      batchSizeManager.track(None,System.currentTimeMillis())
 
       // Validate
       batchSizeManager.getDelay("dummyCommitter").getMillis shouldEqual 0

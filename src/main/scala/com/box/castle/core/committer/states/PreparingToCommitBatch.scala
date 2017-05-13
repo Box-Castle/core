@@ -6,6 +6,7 @@ import com.box.castle.committer.api.Committer
 import com.box.castle.core.committer.{CommitterActorBase, UnrecoverableCommitterActorException}
 import com.box.castle.retry.RetryAsync
 import com.box.castle.router.RouterRequestManager
+import com.box.castle.router.messages.FetchData.Response
 import org.slf4s.Logging
 
 import scala.concurrent.Future
@@ -16,9 +17,9 @@ import scala.util.{Failure, Success, Try}
 private[committer] trait PreparingToCommitBatch extends CommitterActorBase with CommitterActorStates {
   self: Actor with RouterRequestManager with Logging =>
 
-  private case class CommitBatch(userCommitters: IndexedSeq[Committer], batch: CastleMessageBatch, metadata: Option[String])
+  private case class CommitBatch(userCommitters: IndexedSeq[Committer], message: Response, metadata: Option[String])
 
-  override def becomePreparingToCommitBatch(batch: CastleMessageBatch, metadata: Option[String]): Unit = {
+  override def becomePreparingToCommitBatch(message: Response, metadata: Option[String]): Unit = {
     // We use .value here on the Future in order to bypass creating a context for every call which is
     // unnecessary once the initial one time construction of the committer is done by the CommitterFactory
     userCommittersFuture.value match {
@@ -30,7 +31,7 @@ private[committer] trait PreparingToCommitBatch extends CommitterActorBase with 
          * transition to committingBatch from the Receive method defined below.  But this is wasteful, so we
          * short circuit the state change to preparingToCommitBatch.
          */
-        becomeCommittingBatch(toUserCommitters(userCommittersTry), batch, metadata)
+        becomeCommittingBatch(toUserCommitters(userCommittersTry), message, metadata)
       case None => {
         /**
          * Here we actually become preparingToCommitBatch and wait for the future to complete with the userCommitters
@@ -39,7 +40,7 @@ private[committer] trait PreparingToCommitBatch extends CommitterActorBase with 
         context.become(preparingToCommitBatch)
         userCommittersFuture onComplete {
           userCommittersTry => {
-            context.self ! CommitBatch(toUserCommitters(userCommittersTry), batch, metadata)
+            context.self ! CommitBatch(toUserCommitters(userCommittersTry), message, metadata)
           }
         }
       }
@@ -47,7 +48,7 @@ private[committer] trait PreparingToCommitBatch extends CommitterActorBase with 
   }
 
   override def preparingToCommitBatch: Receive = {
-    case CommitBatch(userCommitters, batch, metadata) => becomeCommittingBatch(userCommitters, batch, metadata)
+    case CommitBatch(userCommitters, message, metadata) => becomeCommittingBatch(userCommitters, message, metadata)
     case msg => receiveCommon(msg)
   }
 }

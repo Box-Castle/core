@@ -33,6 +33,7 @@ case class CommitterConfig(private val idRaw: String,
                            maxWaitTime: Duration = DefaultMaxWaitTime,
                            discountFactor: Double = DefaultDiscountFactor,
                            fullBufferThresholdCount: Int = DefaultFullBufferThresholdCount,
+                           emptyBufferThresholdCount: Int = DefaultEmptyBufferThresholdCount,
                            targetBatchSizePercent: Double = DefaultTargetBatchSizePercent) {
   val id = idRaw.trim()
   require(id.nonEmpty, "Committer id must have at least one character")
@@ -91,4 +92,5 @@ object CommitterConfig {
   val DefaultMaxWaitTime = new Duration(300000) // 5 minutes
   val DefaultDiscountFactor = 0.8
   val DefaultFullBufferThresholdCount = 3
+  val DefaultEmptyBufferThresholdCount = 3
 }

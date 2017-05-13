@@ -4,6 +4,7 @@ import akka.actor.Actor
 import com.box.castle.batch.CastleMessageBatch
 import com.box.castle.committer.api.Committer
 import com.box.castle.consumer.OffsetType
+import com.box.castle.router.messages.FetchData.Response
 import com.box.castle.router.messages.OffsetAndMetadata
 import org.joda.time.Duration
 
@@ -28,11 +29,11 @@ trait CommitterActorStates {
 
   def waitingToRestart: Receive
 
-  def becomePreparingToCommitBatch(batch: CastleMessageBatch, metadata: Option[String]): Unit
+  def becomePreparingToCommitBatch(message: Response, metadata: Option[String]): Unit
 
   def preparingToCommitBatch: Receive
 
-  def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], batch: CastleMessageBatch, metadata: Option[String]): Unit
+  def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], message: Response, metadata: Option[String]): Unit
 
   def committingBatch: Receive
 
