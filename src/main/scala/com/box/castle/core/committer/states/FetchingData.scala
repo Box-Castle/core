@@ -48,6 +48,7 @@ trait FetchingData extends CommitterActorBase
       case FetchData.OffsetOutOfRange(_, offset) => {
         log.warn(s"$committerActorId encountered an offset out of range error for offset: $offset, using " +
           s"the following offset out of range policy: ${committerConfig.offsetOutOfRangePolicy}")
+        count(const.Metrics.OffsetOutOfRange)
         committerConfig.offsetOutOfRangePolicy match {
           case OffsetOutOfRangePolicy.useOldestOffset => becomeFetchingOffset(EarliestOffset, None)
           case OffsetOutOfRangePolicy.useLatestOffset => becomeFetchingOffset(LatestOffset, None)
