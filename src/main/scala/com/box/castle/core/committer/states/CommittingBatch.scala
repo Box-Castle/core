@@ -9,7 +9,7 @@ import com.box.castle.core.committer._
 import com.box.castle.core.committer.manager.BatchSizeManager
 import com.box.castle.core.const
 import com.box.castle.router.RouterRequestManager
-import com.box.castle.router.messages.FetchData.Response
+import com.box.castle.router.messages.FetchData.NoMessages
 import com.box.castle.router.messages.{CommitConsumerOffset, FetchData, FetchOffset, OffsetAndMetadata}
 import org.joda.time.Duration
 import org.slf4s.Logging
@@ -19,17 +19,21 @@ import scala.util.{Failure, Success}
 
 
 trait CommittingBatch extends CommitterActorBase
-    with CommitterActorStates
-    with OffsetLagTracker
-    with ConsumerOffsetCommitTracker {
+  with CommitterActorStates
+  with OffsetLagTracker
+  with ConsumerOffsetCommitTracker {
 
   self: Actor with RouterRequestManager with Logging =>
 
   private case class ProcessUserCommitterException(t: Throwable, endTime: Long)
+
   private case class ProcessUserCommitterFactoryException(t: Throwable)
+
   private case class ReprocessMessageBatch(castleMessageBatch: CastleMessageBatch, chunkAndCommitter: ChunkAndCommitter,
                                            metadata: Option[String])
+
   private case class SuccessfullyCommittedBatch(batch: CastleMessageBatch, endTime: Long, metadata: Option[String])
+
   private case class SuccessfullyCommittedChunk(batch: CastleMessageBatch, committer: Committer, metadata: Option[String])
 
   private var commitStartTime: Long = 0
@@ -38,23 +42,25 @@ trait CommittingBatch extends CommitterActorBase
   private var pendingCommitters = Set.empty[Committer]
 
   // Keeps track of reads and configures delays before next fetch
-  private val batchSizeManagerOption = if(committerConfig.targetBatchSizePercent > 0)
-    Some(new BatchSizeManager(committerConfig, castleConfig.bufferSizeInBytes)) else None
+  private val batchSizeManagerOption = if (committerConfig.targetBatchSizePercent > 0)
+    Some(new BatchSizeManager(committerConfig, castleConfig.bufferSizeInBytes))
+  else None
 
   val noDataRetryStrategy = committerFactory.noDataBackoffStrategy
 
   // this is the delay before the next data fetch after a no data fetch occurs
-  private[core] def generateFetchDelay(): Duration =  new Duration(noDataRetryStrategy.delay(0).toMillis)
+  private[core] def generateFetchDelay(): Duration = new Duration(noDataRetryStrategy.delay(0).toMillis)
 
   /**
-   * A batch will be splited evenly into chunks based on the parallelism factor
-   * and be committed with metadata along side with the batch offset.
-   * In this version, for metadata it only supports parallelism factor = 1,
-   * in other words, if metadata = Some(String) && size(chunks) != 1,
-   * this function will throw an unrecoverable exception
-   * @param chunksAndCommitters
-   * @param batch
-   */
+    * A batch will be splited evenly into chunks based on the parallelism factor
+    * and be committed with metadata along side with the batch offset.
+    * In this version, for metadata it only supports parallelism factor = 1,
+    * in other words, if metadata = Some(String) && size(chunks) != 1,
+    * this function will throw an unrecoverable exception
+    *
+    * @param chunksAndCommitters
+    * @param batch
+    */
   private def commitChunksWithCommitters(chunksAndCommitters: IndexedSeq[ChunkAndCommitter],
                                          batch: CastleMessageBatch, metadata: Option[String]): Unit = {
     //This is a temporary check to prevent sending batch metadata to multiple committer instances
@@ -65,9 +71,9 @@ trait CommittingBatch extends CommitterActorBase
         Future(userCommitter.commitAsync(chunk, metadata))
           .flatMap(identity)
           .map {
-          case result: CommitResult => CommitterAndResult(userCommitter, result)
-          case null => throw new NullPointerException(s"Committer actor: ${committerActorId} got nulll from user committer: ${committerConfig.id}")
-        }
+            case result: CommitResult => CommitterAndResult(userCommitter, result)
+            case null => throw new NullPointerException(s"Committer actor: ${committerActorId} got nulll from user committer: ${committerConfig.id}")
+          }
     }
 
     userCommitAsyncFuture onComplete {
@@ -77,7 +83,7 @@ trait CommittingBatch extends CommitterActorBase
             context.self ! SuccessfullyCommittedChunk(batch, committer, success.metadata)
           case CommitterAndResult(committer: Committer, retry: RetryBatch) =>
             val partialChunkAndCommitter = ChunkAndCommitter(retry.messageBatch, committer)
-            val reprocessMessage = ReprocessMessageBatch(batch, partialChunkAndCommitter,retry.metadata)
+            val reprocessMessage = ReprocessMessageBatch(batch, partialChunkAndCommitter, retry.metadata)
             scheduleOnce(retry.retryAfter, reprocessMessage)
         }
       }
@@ -88,14 +94,15 @@ trait CommittingBatch extends CommitterActorBase
   }
 
   /**
-   * To check if metadat is not None and parallelismFactor larger than one
-   * @param metadata it's up to the caller to decide what does metadata mean in the context,
-   *                 it could either mean the metadate framework passing to the user committer,
-   *                 or the metadata user committer sending back
-   * @param parallelismFactor it's up to the caller to decide what should be the right parallelismFactor
-   *                          in the context, it could either be the size of user committer instances or
-   *                          directly from committer config
-   */
+    * To check if metadat is not None and parallelismFactor larger than one
+    *
+    * @param metadata          it's up to the caller to decide what does metadata mean in the context,
+    *                          it could either mean the metadate framework passing to the user committer,
+    *                          or the metadata user committer sending back
+    * @param parallelismFactor it's up to the caller to decide what should be the right parallelismFactor
+    *                          in the context, it could either be the size of user committer instances or
+    *                          directly from committer config
+    */
   private def checkMetadataAndParallelismFactor(metadata: Option[String], parallelismFactor: Int): Unit = {
     metadata match {
       case Some(data) => if (parallelismFactor != 1)
@@ -134,7 +141,7 @@ trait CommittingBatch extends CommitterActorBase
     batchSizeManagerOption match {
       case Some(batchSizeManager) =>
         val delay = batchSizeManager.getDelay(committerActorId)
-        if(delay.getMillis > 0)
+        if (delay.getMillis > 0)
           becomeIdling(OffsetAndMetadata(batch.nextOffset, metadata), delay)
         else {
           log.info(s"$committerActorId fetching immediately because BatchSizeManager returned a delay of 0")
@@ -173,9 +180,9 @@ trait CommittingBatch extends CommitterActorBase
     commitChunksWithCommitters(chunksAndCommitters, batch, metadata)
   }
 
-  override def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], message: Response, metadata: Option[String]): Unit = {
+  override def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], message: Either[FetchData.Success, NoMessages], metadata: Option[String]): Unit = {
     message match {
-      case noMessages: FetchData.NoMessages =>
+      case Right(noMessages) =>
         // Got 0 Bytes so we got Idling state for a some delay before refetching
         val delay = generateFetchDelay()
         log.info(s"$committerActorId got 0 messages for offset: ${noMessages.offset}, backing off for $delay")
@@ -185,7 +192,7 @@ trait CommittingBatch extends CommitterActorBase
 
         becomeIdling(OffsetAndMetadata(noMessages.offset, metadata), delay)
 
-      case success: FetchData.Success =>
+      case Left(success) =>
         // We fetch the latest offset in the topic here so we can compute the offset lag
         sendRequestToRouter(FetchOffset(LatestOffset, topicAndPartition))
 
@@ -196,9 +203,6 @@ trait CommittingBatch extends CommitterActorBase
         context.become(committingBatch)
 
         commitBatch(userCommitters, success.batch, metadata)
-
-      case _ =>
-        throw new UnrecoverableCommitterActorException(committerConfig.id, "Received invalid message that cannot be handled by actor.")
     }
   }
 

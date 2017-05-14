@@ -24,10 +24,10 @@ trait FetchingData extends CommitterActorBase
     checkResult(result) {
 
       case success: FetchData.Success =>
-        becomePreparingToCommitBatch(success, consumerMetadata)
+        becomePreparingToCommitBatch(Left(success), consumerMetadata)
 
       case noMessages: FetchData.NoMessages =>
-        becomePreparingToCommitBatch(noMessages, consumerMetadata)
+        becomePreparingToCommitBatch(Right(noMessages), consumerMetadata)
 
       case FetchData.UnknownTopicOrPartition(failedTopicAndPartition, failedOffset) => {
         val msg = s"$committerActorId encountered an unknown topic or partition error " +
