@@ -8,6 +8,7 @@ package object const {
     val Committer = "committer"
     val CommitterManager = "committer_manager"
     val Worker = "worker"
+    val Leader = "leader"
   }
 
   object Metrics {
@@ -15,6 +16,8 @@ package object const {
     val UnexpectedFailures = "unexpected_failures"
 
     val OffsetOutOfRange = "offset_out_of_range"
+
+    val AvailableWorkersChanged = "available_workers_changed"
 
     // These are fatal failures where the Castle framework cannot continue to operate in a healthy way
     val Fatals = "fatals"
@@ -44,6 +47,7 @@ package object const {
     val Partition = "partition"
     val KeeperState = "keeper_state"
     val WatcherEventType = "event_type"
+    val ClientId = "client_id"
   }
 
   object CastleZkPaths {
