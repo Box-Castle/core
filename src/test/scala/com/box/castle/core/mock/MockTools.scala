@@ -34,7 +34,7 @@ trait MockTools extends Mockito with Logging with MockBatchTools {
   }
 
   // Primitive, but effective
-  def mustEventuallyBeTrue(expression: => Boolean, timeout: FiniteDuration = FiniteDuration(30, TimeUnit.SECONDS)): MatchSuccess[None.type] = {
+  def mustEventuallyBeTrue(expression: => Boolean, timeout: FiniteDuration = FiniteDuration(15, TimeUnit.SECONDS)): MatchSuccess[None.type] = {
     val maxIterations = timeout.toMillis / 50
     var i = 0
     while (i < maxIterations && !expression) {
