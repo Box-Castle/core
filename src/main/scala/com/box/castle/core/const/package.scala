@@ -14,6 +14,8 @@ package object const {
     // These are non fatal failures
     val UnexpectedFailures = "unexpected_failures"
 
+    val OffsetOutOfRange = "offset_out_of_range"
+
     // These are fatal failures where the Castle framework cannot continue to operate in a healthy way
     val Fatals = "fatals"
 
