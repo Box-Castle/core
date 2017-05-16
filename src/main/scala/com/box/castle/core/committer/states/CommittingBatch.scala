@@ -180,8 +180,8 @@ trait CommittingBatch extends CommitterActorBase
     commitChunksWithCommitters(chunksAndCommitters, batch, metadata)
   }
 
-  override def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], message: Either[FetchData.Success, NoMessages], metadata: Option[String]): Unit = {
-    message match {
+  override def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], batch: Either[CastleMessageBatch, NoMessages], metadata: Option[String]): Unit = {
+    batch match {
       case Right(noMessages) =>
         // Got 0 Bytes so we got Idling state for a some delay before refetching
         val delay = generateFetchDelay()
@@ -192,17 +192,17 @@ trait CommittingBatch extends CommitterActorBase
 
         becomeIdling(OffsetAndMetadata(noMessages.offset, metadata), delay)
 
-      case Left(success) =>
+      case Left(castleMessageBatch) =>
         // We fetch the latest offset in the topic here so we can compute the offset lag
         sendRequestToRouter(FetchOffset(LatestOffset, topicAndPartition))
 
         // Track bytes read from Kafka if BatchSizeManager is enabled
-        batchSizeManagerOption.foreach(_.track(Some(success.batch.sizeInBytes), System.currentTimeMillis()))
+        batchSizeManagerOption.foreach(_.track(Some(castleMessageBatch.sizeInBytes), System.currentTimeMillis()))
 
         commitStartTime = System.nanoTime()
         context.become(committingBatch)
 
-        commitBatch(userCommitters, success.batch, metadata)
+        commitBatch(userCommitters, castleMessageBatch, metadata)
     }
   }
 

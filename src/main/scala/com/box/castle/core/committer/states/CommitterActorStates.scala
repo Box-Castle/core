@@ -29,11 +29,11 @@ trait CommitterActorStates {
 
   def waitingToRestart: Receive
 
-  def becomePreparingToCommitBatch(message: Either[Success,NoMessages], metadata: Option[String]): Unit
+  def becomePreparingToCommitBatch(batch: Either[CastleMessageBatch,NoMessages], metadata: Option[String]): Unit
 
   def preparingToCommitBatch: Receive
 
-  def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], message: Either[Success,NoMessages], metadata: Option[String]): Unit
+  def becomeCommittingBatch(userCommitters: IndexedSeq[Committer], batch: Either[CastleMessageBatch,NoMessages], metadata: Option[String]): Unit
 
   def committingBatch: Receive
 

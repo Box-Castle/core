@@ -24,7 +24,7 @@ trait FetchingData extends CommitterActorBase
     checkResult(result) {
 
       case success: FetchData.Success =>
-        becomePreparingToCommitBatch(Left(success), consumerMetadata)
+        becomePreparingToCommitBatch(Left(success.batch), consumerMetadata)
 
       case noMessages: FetchData.NoMessages =>
         becomePreparingToCommitBatch(Right(noMessages), consumerMetadata)
