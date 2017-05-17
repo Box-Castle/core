@@ -3,7 +3,7 @@ package com.box.castle.core.leader
 import java.nio.charset.Charset
 import java.util.concurrent.{Executors, TimeUnit}
 
-import com.box.castle.core.CuratorFactory
+import com.box.castle.core.{const, CuratorFactory}
 import com.box.castle.core.config.{CommitterConfig, LeaderConfig}
 import com.box.castle.core.const.CastleZkPaths
 import com.box.castle.core.leader.messages._
@@ -33,6 +33,15 @@ class Leader(leaderActor: LeaderActorRef,
              taskManager: TaskManager,
              metricsLogger: MetricsLogger)
   extends Logging {
+
+  def count(metricName: String, value: Long = 1): Unit = {
+    Exception.ignoring(classOf[Throwable])(
+      metricsLogger.count(
+        const.Components.Leader,
+        metricName,
+        Map(const.TagNames.ClientId -> clientId.value),
+        value))
+  }
 
   // We do this to avoid having to import scala.language.reflectiveCalls
   private class LeaderExecutionContext extends ExecutionContext {
@@ -96,6 +105,7 @@ class Leader(leaderActor: LeaderActorRef,
               s"\nCurrent workers = $currentWorkers" +
               s"\nNew workers = $availableWorkers")
             processingAvailableWorkersChange = true
+            count(const.Metrics.AvailableWorkersChanged)
             leaderActor ! ProcessAvailableWorkersChange
           }
           else {
