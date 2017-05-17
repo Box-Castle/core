@@ -1182,6 +1182,7 @@ with Mockito with MockTools with NoTimeConversions {
       })
 
       mustEventuallyBeTrue({
+        System.out.println(s"Current mockBoxSimpleConsumer.committedConsumerOffsets=${mockBoxSimpleConsumer.committedConsumerOffsets}")
         mockBoxSimpleConsumer.committedConsumerOffsets ==
           Queue((consumerId, topicAndPartition, OffsetMetadataAndError(offset + 3, OffsetAndMetadata.ConsumerMetadataPrefix + baseMetadata)),
             (consumerId, topicAndPartition, OffsetMetadataAndError(offset + 6, OffsetAndMetadata.ConsumerMetadataPrefix + (1 to 2).map(_ => baseMetadata).mkString(metadataDelimiter))),
