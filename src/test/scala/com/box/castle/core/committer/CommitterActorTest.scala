@@ -1133,7 +1133,7 @@ with Mockito with MockTools with NoTimeConversions {
       }
 
 
-      val a = makeMockMessageAndOffset(offset + 0, offset + 1, 20)
+      val a = makeMockMessageAndOffset(offset, offset + 1, 20)
       val b = makeMockMessageAndOffset(offset + 1, offset + 2, 17)
       val c = makeMockMessageAndOffset(offset + 2, offset + 3, 36)
 
@@ -1182,22 +1182,11 @@ with Mockito with MockTools with NoTimeConversions {
       })
 
       mustEventuallyBeTrue({
-        println(s"NumMessagesCommitted ---> ${mockMetricsLogger.getCountFor(const.Metrics.NumMessagesCommitted)}")
-        System.out.println(s"Current mockBoxSimpleConsumer.committedConsumerOffsets=${mockBoxSimpleConsumer.committedConsumerOffsets}")
-        // Queue(
-        // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23845,V1|CONSUMER_METADATAmetadata,0]),
-        // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23851,V1|CONSUMER_METADATAmetadata,metadata,metadata,0]))
-
-        // expected: Current mockBoxSimpleConsumer.committedConsumerOffsets=
-        // Queue(
-        // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23845,V1|CONSUMER_METADATAmetadata,0]),
-        // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23848,V1|CONSUMER_METADATAmetadata,metadata,0]),
-        // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23851,V1|CONSUMER_METADATAmetadata,metadata,metadata,0]))
         mockBoxSimpleConsumer.committedConsumerOffsets ==
           Queue((consumerId, topicAndPartition, OffsetMetadataAndError(offset + 3, OffsetAndMetadata.ConsumerMetadataPrefix + baseMetadata)),
-                (consumerId, topicAndPartition, OffsetMetadataAndError(offset + 6, OffsetAndMetadata.ConsumerMetadataPrefix + (1 to 2).map(_ => baseMetadata).mkString(metadataDelimiter))),
-                (consumerId, topicAndPartition, OffsetMetadataAndError(offset + 9, OffsetAndMetadata.ConsumerMetadataPrefix + (1 to 3).map(_ => baseMetadata).mkString(metadataDelimiter))))
-      }, 120, TimeUnit.SECONDS)
+            (consumerId, topicAndPartition, OffsetMetadataAndError(offset + 6, OffsetAndMetadata.ConsumerMetadataPrefix + (1 to 2).map(_ => baseMetadata).mkString(metadataDelimiter))),
+            (consumerId, topicAndPartition, OffsetMetadataAndError(offset + 9, OffsetAndMetadata.ConsumerMetadataPrefix + (1 to 3).map(_ => baseMetadata).mkString(metadataDelimiter))))
+      })
     }
   }
 
