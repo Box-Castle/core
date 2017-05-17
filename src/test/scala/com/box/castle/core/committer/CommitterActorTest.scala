@@ -1182,9 +1182,16 @@ with Mockito with MockTools with NoTimeConversions {
       })
 
       mustEventuallyBeTrue({
+        println(s"NumMessagesCommitted ---> ${mockMetricsLogger.getCountFor(const.Metrics.NumMessagesCommitted)}")
         System.out.println(s"Current mockBoxSimpleConsumer.committedConsumerOffsets=${mockBoxSimpleConsumer.committedConsumerOffsets}")
         // Queue(
         // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23845,V1|CONSUMER_METADATAmetadata,0]),
+        // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23851,V1|CONSUMER_METADATAmetadata,metadata,metadata,0]))
+
+        // expected: Current mockBoxSimpleConsumer.committedConsumerOffsets=
+        // Queue(
+        // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23845,V1|CONSUMER_METADATAmetadata,0]),
+        // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23848,V1|CONSUMER_METADATAmetadata,metadata,0]),
         // (mock_namespace_my_mock_committer_id,[preview,1],OffsetAndMetadata[23851,V1|CONSUMER_METADATAmetadata,metadata,metadata,0]))
         mockBoxSimpleConsumer.committedConsumerOffsets ==
           Queue((consumerId, topicAndPartition, OffsetMetadataAndError(offset + 3, OffsetAndMetadata.ConsumerMetadataPrefix + baseMetadata)),
