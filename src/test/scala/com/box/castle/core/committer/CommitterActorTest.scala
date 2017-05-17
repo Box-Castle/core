@@ -39,6 +39,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 class CommitterActorTest extends Specification
 with Mockito with MockTools with NoTimeConversions {
+  sequential
 
   val lock = new Object()
   var numSynchronousCommitCallsWithErrorEnabled = 0
