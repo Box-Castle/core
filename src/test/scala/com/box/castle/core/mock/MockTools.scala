@@ -40,6 +40,7 @@ trait MockTools extends Mockito with Logging with MockBatchTools {
     while (i < maxIterations && !expression) {
       Thread.sleep(50)
       i += 1
+
     }
     if (i < maxIterations)
       ok

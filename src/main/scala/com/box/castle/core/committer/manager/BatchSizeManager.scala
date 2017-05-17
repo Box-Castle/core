@@ -16,6 +16,7 @@ class BatchSizeManager(committerConfig: CommitterConfig,
 
   private val samples = new BoundedQueue[ReadSample](committerConfig.samplingSlots)
   private var consecutiveFullBuffers = 0
+  private var consecutiveEmptyBuffers = 0
   private val zeroByteSample = ReadSample(0, 0)
 
   /**
@@ -25,14 +26,22 @@ class BatchSizeManager(committerConfig: CommitterConfig,
     * @param bytesRead
     * @param timestamp
     */
-  def track(bytesRead: Int, timestamp: Long) = {
-    if (bytesRead >= bufferSize) {
-      // Update number of times we have seen consecutive full buffer reads
-      consecutiveFullBuffers += 1
-    }
-    else {
-      // Reset counter if no more consecutive full buffer reads seen
-      consecutiveFullBuffers = 0
+  def track(bytesRead: Option[Int], timestamp: Long) = {
+    bytesRead match {
+      case Some(bytes) =>
+        if(bytes >= bufferSize) {
+          // Update number of times we have seen consecutive full buffer reads
+          consecutiveFullBuffers += 1
+        }
+        else {
+          // Reset counter if no more consecutive full buffer reads seen
+          consecutiveFullBuffers = 0
+        }
+        // Reset empty buffer counter if we got non-zero bytes
+        consecutiveEmptyBuffers = 0
+      case None =>
+        // Keep track of consecutive empty buffers seen
+        consecutiveEmptyBuffers += 1
     }
 
     // If queue is full then we add a new sample only after sampling interval
@@ -40,15 +49,19 @@ class BatchSizeManager(committerConfig: CommitterConfig,
 
       // The bytes read is cumulative here so the new sample adds on to the last samples bytesRead
       // This makes computation of rate more efficient during getDelay
-      val sample = ReadSample(samples.lastOption.getOrElse(zeroByteSample).bytesRead + bytesRead, timestamp)
+      val sample = ReadSample(samples.lastOption.getOrElse(zeroByteSample).bytesRead + bytesRead.getOrElse(0), timestamp)
       samples.enqueue(sample)
     }
 
-    if (consecutiveFullBuffers > committerConfig.fullBufferThresholdCount) {
-      // We are most likely in catchup mode
+    if (consecutiveFullBuffers > committerConfig.fullBufferThresholdCount || consecutiveEmptyBuffers > committerConfig.emptyBufferThresholdCount) {
+      // We are most likely in catchup mode if we have seen consecutive full buffers
       // Flush all samples so that delay falls to 0
+
+      // If we have seen consecutive empty buffers then also we need to flush all samples
+      // Otherwise next computed delay will be unreasonably large
       samples.clear()
     }
+
   }
 
   /**
