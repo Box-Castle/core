@@ -1,7 +1,7 @@
 package com.box.castle.core.committer.manager
 
 import com.box.castle.core.common.{BoundedQueue, ReadSample}
-import com.box.castle.core.config.CommitterConfig
+import com.box.castle.core.config.BatchSizeMangerConfig
 import org.joda.time.Duration
 import org.slf4s.Logging
 
@@ -11,10 +11,10 @@ import org.slf4s.Logging
   * bufferSize of data from Kafka.
   *
   */
-class BatchSizeManager(committerConfig: CommitterConfig,
+class BatchSizeManager(batchSizeManagerConfig: BatchSizeMangerConfig,
                        bufferSize: Int) extends Logging {
 
-  private val samples = new BoundedQueue[ReadSample](committerConfig.samplingSlots)
+  private val samples = new BoundedQueue[ReadSample](batchSizeManagerConfig.samplingSlots)
   private var consecutiveFullBuffers = 0
   private var consecutiveEmptyBuffers = 0
   private val zeroByteSample = ReadSample(0, 0)
@@ -45,7 +45,7 @@ class BatchSizeManager(committerConfig: CommitterConfig,
     }
 
     // If queue is full then we add a new sample only after sampling interval
-    if (!samples.isFull || timestamp - samples.last.timestamp >= committerConfig.samplingInterval.getMillis) {
+    if (!samples.isFull || timestamp - samples.last.timestamp >= batchSizeManagerConfig.samplingInterval.getMillis) {
 
       // The bytes read is cumulative here so the new sample adds on to the last samples bytesRead
       // This makes computation of rate more efficient during getDelay
@@ -53,7 +53,7 @@ class BatchSizeManager(committerConfig: CommitterConfig,
       samples.enqueue(sample)
     }
 
-    if (consecutiveFullBuffers > committerConfig.fullBufferThresholdCount || consecutiveEmptyBuffers > committerConfig.emptyBufferThresholdCount) {
+    if (consecutiveFullBuffers > batchSizeManagerConfig.fullBufferThresholdCount || consecutiveEmptyBuffers > batchSizeManagerConfig.emptyBufferThresholdCount) {
       // We are most likely in catchup mode if we have seen consecutive full buffers
       // Flush all samples so that delay falls to 0
 
@@ -77,11 +77,11 @@ class BatchSizeManager(committerConfig: CommitterConfig,
       val dataRead: Double = samples.last.bytesRead - samples.front.bytesRead
       val elapsedTime: Double = samples.last.timestamp - samples.front.timestamp
       val rate: Double = dataRead / elapsedTime
-      val delay = (bufferSize * committerConfig.targetBatchSizePercent) / rate
+      val delay = (bufferSize * batchSizeManagerConfig.targetBatchSizePercent) / rate
 
       // The discount factor reduces delay based on how many consecutive full buffers we have seen.
-      val discount = Math.pow(committerConfig.discountFactor, consecutiveFullBuffers)
-      val computedDelay = Math.min(committerConfig.maxWaitTime.getMillis, (delay * discount).toLong)
+      val discount = Math.pow(batchSizeManagerConfig.discountFactor, consecutiveFullBuffers)
+      val computedDelay = Math.min(batchSizeManagerConfig.maxWaitTime.getMillis, (delay * discount).toLong)
 
       log.info(s"$committerActorId idling for ${computedDelay / 1000} seconds after calculating a rate of ${"%.3f".format(rate / 1048.576)} MiB/sec with discountFactor of ${"%.3f".format(discount)}")
       new Duration(computedDelay)

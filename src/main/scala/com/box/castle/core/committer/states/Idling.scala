@@ -31,7 +31,7 @@ trait Idling extends CommitterActorBase with CommitterActorStates with OffsetLag
   // heartbeat if custom user committer has heartbeat time set
   //   heartbeatTime is an option where None means we do not heartbeat
   //   and Some(t) means heartbeat with duration t
-  private val configuredHeartbeatDuration = committerConfig.heartbeatCadenceInMillis
+  private val configuredHeartbeatDuration = committerConfig.heartbeatCadence
 
   private val ZEROTIME = new DateTime(1970, 1, 1, 1, 1)
 

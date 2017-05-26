@@ -20,7 +20,7 @@ case class CommitterConfig(private val idRaw: String,
                            customConfig: Map[String, String],
                            private val topicsRegexRaw: Option[String],
                            topicsSet: Option[Set[String]],
-                           heartbeatCadenceInMillis: Option[Duration],
+                           heartbeatCadence: Option[Duration] = DefaultHeartbeatCadence,
                            numThreads: Int = DefaultNumThreads,
                            initialOffset: InitialOffset = DefaultInitialOffset,
                            offsetOutOfRangePolicy: OffsetOutOfRangePolicy = DefaultOffsetOutOfRangePolicy,
@@ -28,13 +28,8 @@ case class CommitterConfig(private val idRaw: String,
                            parallelismFactorByTopic: Map[String, Int] = DefaultParallelismFactorByTopic,
                            corruptMessagePolicy: CorruptMessagePolicy = DefaultCorruptMessagePolicy,
                            useKafkaMetadataManager: Boolean = DefaultUseKafkaMetadataManager,
-                           samplingSlots: Int = DefaultSamplingSlots,
-                           samplingInterval: Duration = DefaultSamplingInterval,
-                           maxWaitTime: Duration = DefaultMaxWaitTime,
-                           discountFactor: Double = DefaultDiscountFactor,
-                           fullBufferThresholdCount: Int = DefaultFullBufferThresholdCount,
-                           emptyBufferThresholdCount: Int = DefaultEmptyBufferThresholdCount,
-                           targetBatchSizePercent: Double = DefaultTargetBatchSizePercent) {
+                           batchSizeManagerConfig: Option[BatchSizeMangerConfig] = DefaultBatchSizeMangerConfig
+                           ) {
   val id = idRaw.trim()
   require(id.nonEmpty, "Committer id must have at least one character")
   require(id.replaceAll("[^A-Za-z0-9-_]", "_") == id, "Committer id must consist of alphanumeric characters, dashes (-), and underscores (_)")
@@ -42,10 +37,6 @@ case class CommitterConfig(private val idRaw: String,
   require(topicsRegexRaw.isDefined || topicsSet.isDefined, "Must specify either a topics set or regex")
 
   require(parallelismFactor >= 1, "Parallelism factor must be 1 or greater")
-
-  require(samplingSlots > 1, "Sampling Slots should be greater than 1")
-
-  require(discountFactor > 0 && discountFactor < 1, "Discount Factor should range between 0 to 1")
 
   parallelismFactorByTopic.foreach {
     case (topic, factor) => {
@@ -81,16 +72,11 @@ case class CommitterConfig(private val idRaw: String,
 object CommitterConfig {
   val DefaultOffsetOutOfRangePolicy = OffsetOutOfRangePolicy.useOldestOffset
   val DefaultInitialOffset = InitialOffset.oldest
+  val DefaultHeartbeatCadence = None
   val DefaultNumThreads = 32
   val DefaultParallelismFactor = 1
   val DefaultParallelismFactorByTopic = Map.empty[String, Int]
   val DefaultCorruptMessagePolicy = CorruptMessagePolicy.skip
   val DefaultUseKafkaMetadataManager = true
-  val DefaultTargetBatchSizePercent = 0
-  val DefaultSamplingSlots = 20
-  val DefaultSamplingInterval = new Duration(60000) // 1 minute
-  val DefaultMaxWaitTime = new Duration(300000) // 5 minutes
-  val DefaultDiscountFactor = 0.8
-  val DefaultFullBufferThresholdCount = 3
-  val DefaultEmptyBufferThresholdCount = 3
+  val DefaultBatchSizeMangerConfig = None
 }

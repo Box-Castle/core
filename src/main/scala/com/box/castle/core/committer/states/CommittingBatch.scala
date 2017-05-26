@@ -42,9 +42,9 @@ trait CommittingBatch extends CommitterActorBase
   private var pendingCommitters = Set.empty[Committer]
 
   // Keeps track of reads and configures delays before next fetch
-  private val batchSizeManagerOption = if (committerConfig.targetBatchSizePercent > 0)
-    Some(new BatchSizeManager(committerConfig, castleConfig.bufferSizeInBytes))
-  else None
+  private val batchSizeManagerOption = committerConfig.batchSizeManagerConfig.map(batchSizeManagerConfig =>
+    new BatchSizeManager(batchSizeManagerConfig, castleConfig.bufferSizeInBytes)
+  )
 
   val noDataRetryStrategy = committerFactory.noDataBackoffStrategy
 
