@@ -15,6 +15,8 @@ case class BatchSizeMangerConfig(samplingSlots: Int = DefaultSamplingSlots,
 
   require(discountFactor > 0 && discountFactor < 1, "Discount Factor should range between 0 to 1")
 
+  require(targetBatchSizePercent >= 0 && targetBatchSizePercent <= 1,
+    "Target batch size percent must be in the interval [0, 1] inclusive")
 }
 
 
