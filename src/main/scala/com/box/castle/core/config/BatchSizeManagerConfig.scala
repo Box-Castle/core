@@ -1,9 +1,9 @@
 package com.box.castle.core.config
 
 import org.joda.time.Duration
-import BatchSizeMangerConfig._
+import BatchSizeManagerConfig._
 
-case class BatchSizeMangerConfig(samplingSlots: Int = DefaultSamplingSlots,
+case class BatchSizeManagerConfig(samplingSlots: Int = DefaultSamplingSlots,
                                  samplingInterval: Duration = DefaultSamplingInterval,
                                  maxWaitTime: Duration = DefaultMaxWaitTime,
                                  discountFactor: Double = DefaultDiscountFactor,
@@ -20,7 +20,7 @@ case class BatchSizeMangerConfig(samplingSlots: Int = DefaultSamplingSlots,
 }
 
 
-object BatchSizeMangerConfig {
+object BatchSizeManagerConfig {
   val DefaultTargetBatchSizePercent = 0
   val DefaultSamplingSlots = 20
   val DefaultSamplingInterval = new Duration(60000) // 1 minute

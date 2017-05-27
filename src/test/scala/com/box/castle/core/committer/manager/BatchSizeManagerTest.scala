@@ -1,6 +1,6 @@
 package com.box.castle.core.committer.manager
 
-import com.box.castle.core.config.{BatchSizeMangerConfig, CommitterConfig}
+import com.box.castle.core.config.BatchSizeManagerConfig
 import org.joda.time.Duration
 import org.specs2.mutable.Specification
 
@@ -15,7 +15,7 @@ class BatchSizeManagerTest extends Specification {
   val discountFactor = 0.8
   val threshold = 3
   val targetBatchSize = 0.9
-  val batchSizeMangerConfig = BatchSizeMangerConfig(
+  val batchSizeManagerConfig = BatchSizeManagerConfig(
         targetBatchSizePercent = targetBatchSize,
         samplingSlots = samplingSlots,
         samplingInterval = samplingInterval,
@@ -30,7 +30,7 @@ class BatchSizeManagerTest extends Specification {
 
       val bufferSize = 1200 //bytes
       val bytesRead = 40
-      val batchSizeManager = new BatchSizeManager(batchSizeMangerConfig, bufferSize)
+      val batchSizeManager = new BatchSizeManager(batchSizeManagerConfig, bufferSize)
 
       // Execute
       batchSizeManager.track(Some(bytesRead), System.currentTimeMillis())
@@ -48,7 +48,7 @@ class BatchSizeManagerTest extends Specification {
       // Setup
       val bufferSize = 1200 //bytes
       val bytesRead = 40
-      val batchSizeManager = new BatchSizeManager(batchSizeMangerConfig, bufferSize)
+      val batchSizeManager = new BatchSizeManager(batchSizeManagerConfig, bufferSize)
 
       // Execute
       batchSizeManager.track(Some(bytesRead), System.currentTimeMillis())
@@ -75,7 +75,7 @@ class BatchSizeManagerTest extends Specification {
       // Setup
       val bufferSize = 100 //bytes
       val bytesRead = 10
-      val batchSizeManager = new BatchSizeManager(batchSizeMangerConfig, bufferSize)
+      val batchSizeManager = new BatchSizeManager(batchSizeManagerConfig, bufferSize)
 
       // Execute
       val ts = System.currentTimeMillis()
@@ -92,7 +92,7 @@ class BatchSizeManagerTest extends Specification {
       // Setup
       val bufferSize = 100 //bytes
       val bytesRead = 10
-      val batchSizeManager = new BatchSizeManager(batchSizeMangerConfig, bufferSize)
+      val batchSizeManager = new BatchSizeManager(batchSizeManagerConfig, bufferSize)
 
       // Execute
       val ts = System.currentTimeMillis()
@@ -114,7 +114,7 @@ class BatchSizeManagerTest extends Specification {
       // Setup
       val bufferSize = 100 //bytes
       val bytesRead = 10
-      val batchSizeManager = new BatchSizeManager(batchSizeMangerConfig, bufferSize)
+      val batchSizeManager = new BatchSizeManager(batchSizeManagerConfig, bufferSize)
 
       // Validate
       batchSizeManager.getDelay("dummyCommitter").getMillis shouldEqual 0
@@ -130,7 +130,7 @@ class BatchSizeManagerTest extends Specification {
       // Setup
       val bufferSize = 100 //bytes
       val bytesRead = 10
-      val batchSizeManager = new BatchSizeManager(batchSizeMangerConfig, bufferSize)
+      val batchSizeManager = new BatchSizeManager(batchSizeManagerConfig, bufferSize)
 
       // Execute
       batchSizeManager.track(Some(bytesRead),System.currentTimeMillis())
@@ -150,7 +150,7 @@ class BatchSizeManagerTest extends Specification {
       // Setup
       val bufferSize = 100 //bytes
       val bytesRead = 10
-      val batchSizeManager = new BatchSizeManager(batchSizeMangerConfig, bufferSize)
+      val batchSizeManager = new BatchSizeManager(batchSizeManagerConfig, bufferSize)
 
       // Execute
       batchSizeManager.track(Some(bytesRead),System.currentTimeMillis())

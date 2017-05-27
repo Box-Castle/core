@@ -1,7 +1,7 @@
 package com.box.castle.core.committer.manager
 
 import com.box.castle.core.common.{BoundedQueue, ReadSample}
-import com.box.castle.core.config.BatchSizeMangerConfig
+import com.box.castle.core.config.BatchSizeManagerConfig
 import org.joda.time.Duration
 import org.slf4s.Logging
 
@@ -11,7 +11,7 @@ import org.slf4s.Logging
   * bufferSize of data from Kafka.
   *
   */
-class BatchSizeManager(batchSizeManagerConfig: BatchSizeMangerConfig,
+class BatchSizeManager(batchSizeManagerConfig: BatchSizeManagerConfig,
                        bufferSize: Int) extends Logging {
 
   private val samples = new BoundedQueue[ReadSample](batchSizeManagerConfig.samplingSlots)
