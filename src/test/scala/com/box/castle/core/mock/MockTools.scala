@@ -116,6 +116,6 @@ trait MockTools extends Mockito with Logging with MockBatchTools {
       topicsRegexRaw,
       topicsSet,
       parallelismFactor = parallelismFactor,
-      heartbeatCadenceInMillis = heartbeatCadenceInMillis)
+      heartbeatCadence = heartbeatCadenceInMillis)
   }
 }
