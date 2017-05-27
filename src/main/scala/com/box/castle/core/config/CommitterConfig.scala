@@ -28,7 +28,7 @@ case class CommitterConfig(private val idRaw: String,
                            parallelismFactorByTopic: Map[String, Int] = DefaultParallelismFactorByTopic,
                            corruptMessagePolicy: CorruptMessagePolicy = DefaultCorruptMessagePolicy,
                            useKafkaMetadataManager: Boolean = DefaultUseKafkaMetadataManager,
-                           batchSizeManagerConfig: Option[BatchSizeManagerConfig] = DefaultBatchSizeMangerConfig
+                           batchSizeManagerConfig: Option[BatchSizeManagerConfig] = DefaultBatchSizeManagerConfig
                            ) {
   val id = idRaw.trim()
   require(id.nonEmpty, "Committer id must have at least one character")
@@ -78,5 +78,5 @@ object CommitterConfig {
   val DefaultParallelismFactorByTopic = Map.empty[String, Int]
   val DefaultCorruptMessagePolicy = CorruptMessagePolicy.skip
   val DefaultUseKafkaMetadataManager = true
-  val DefaultBatchSizeMangerConfig = None
+  val DefaultBatchSizeManagerConfig = None
 }
