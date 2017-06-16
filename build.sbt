@@ -7,7 +7,7 @@ licenses += ("Apache 2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
 scalaVersion := "2.10.4"
 
 libraryDependencies ++= Seq(
-  "com.box"                 %% "castle-router"          % "1.0.0",
+  "com.box"                 %% "castle-router"          % "1.0.1",
   "com.box"                 %% "castle-committer-api"   % "1.0.0",
   "org.apache.kafka"        %% "kafka"                  % "0.8.1",
   "org.slf4s"               %% "slf4s-api"              % "1.7.13",
