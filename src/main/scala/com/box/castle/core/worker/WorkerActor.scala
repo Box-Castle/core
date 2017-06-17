@@ -74,6 +74,7 @@ class WorkerActor(workerFactory: WorkerFactory,
               s"unexpectedly deleted in ZooKeeper.  For safety, the actor will be fully re-initialized")
           }
           case NoneWatcherType(_, keeperState) => {
+            log.info(s"WorkerActor-$workerActorId processing None WatcherType with keeperState: ${keeperState}")
             metricsLogger.count(const.Components.Worker, const.Metrics.WatcherEvent,
               Map(
                 const.TagNames.WatcherEventType -> None.toString,
@@ -82,12 +83,14 @@ class WorkerActor(workerFactory: WorkerFactory,
 
             keeperState match {
               case Disconnected => {
+                log.info(s"WorkerActor-$workerActorId processing None WatcherType with Disconnected state")
                 // we set the local keeper state to be disconnected and schedule a
                 // message to self in future to check if we are still disconnected
                 isKeeperStateConnected = false
                 context.system.scheduler.scheduleOnce(WorkerActor.checkKeeperStateDelay, context.self, CheckKeeperState)
               }
               case SyncConnected => {
+                log.info(s"WorkerActor-$workerActorId processing None WatcherType with SyncConnected state")
                 isKeeperStateConnected = true
               }
               case Expired => {
@@ -111,10 +114,15 @@ class WorkerActor(workerFactory: WorkerFactory,
       }
     }
     case CheckKeeperState => {
-      if(!isKeeperStateConnected)
+      if(!isKeeperStateConnected) {
         metricsLogger.count(const.Components.Worker, const.Metrics.ZkReconnectFailed)
         throw new WorkerException(s"ZK connection for WorkerActor-$workerActorId could not be re-established " +
           s"after ${WorkerActor.checkKeeperStateDelay}. Restarting WorkerActor.")
+      }
+      else {
+        log.info(s"WorkerActor-$workerActorId was able to re-establish the ZK connection within " +
+          s"the ${WorkerActor.checkKeeperStateDelay} timeout")
+      }
     }
     case GracefulShutdown => {
       log.info(s"WorkerActor-$workerActorId shutting down with akka path: ${self.path}")
