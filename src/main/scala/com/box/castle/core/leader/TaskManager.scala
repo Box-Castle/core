@@ -66,21 +66,21 @@ class TaskManager(
       tasks
   }
 
-  private def matchTopicsRegex(topicsRegex: Regex, kafkaTopic: KafkaTopic, committerId: String, committerIds: Set[String]) = {
+  protected[leader] def matchTopicsRegex(topicsRegex: Regex, kafkaTopic: KafkaTopic, committerId: String, committerIds: Set[String]) = {
       kafkaTopic.name match {
         case topicsRegex(_*) => if(matchCommitterTopicFilter(kafkaTopic,committerId)) committerIds + committerId else committerIds
         case _ => committerIds
       }
   }
 
-  private def matchTopicsSet(topicsSet: Set[String], kafkaTopic: KafkaTopic, committerId: String, committerIds: Set[String]) = {
+  protected[leader] def matchTopicsSet(topicsSet: Set[String], kafkaTopic: KafkaTopic, committerId: String, committerIds: Set[String]) = {
     if (topicsSet.contains(kafkaTopic.name) && matchCommitterTopicFilter(kafkaTopic, committerId))
       committerIds + committerId
     else
       committerIds
   }
 
-  private def matchCommitterTopicFilter(kafkaTopic: KafkaTopic, committerId: String): Boolean = {
+  protected[leader] def matchCommitterTopicFilter(kafkaTopic: KafkaTopic, committerId: String): Boolean = {
     val topicFilter = topicFilterMap(committerId)
     topicFilter.matches(kafkaTopic.name)
   }

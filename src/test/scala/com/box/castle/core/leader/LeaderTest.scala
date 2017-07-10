@@ -4,7 +4,8 @@ import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
-import akka.testkit.{TestProbe, TestActorRef}
+import akka.testkit.{TestActorRef, TestProbe}
+import com.box.castle.committer.api.TopicFilter
 import com.box.castle.core.CuratorFactory
 import com.box.castle.core.config.{CommitterConfig, InitialOffset, LeaderConfig}
 import com.box.castle.core.const.CastleZkPaths
@@ -12,9 +13,9 @@ import com.box.castle.core.leader.messages.{PollAvailableKafkaTopics, PollAvaila
 import com.box.castle.core.mock.MockTools
 import com.box.castle.metrics.MetricsLogger
 import com.box.castle.router.kafkadispatcher.KafkaDispatcherFactory
-import com.box.castle.router.mock.{MockCastleSimpleConsumerFactory, MockMetricsLogger, MockCastleSimpleConsumer}
+import com.box.castle.router.mock.{MockCastleSimpleConsumer, MockCastleSimpleConsumerFactory, MockMetricsLogger}
 import com.box.castle.router.proxy.KafkaDispatcherProxyPoolFactory
-import com.box.castle.router.{RouterFactory, Router, RouterRef}
+import com.box.castle.router.{Router, RouterFactory, RouterRef}
 import com.box.castle.core.worker.tasks.{AssignedTasks, Task}
 import com.box.kafka.Broker
 import com.box.castle.consumer.{CastleSimpleConsumerFactory, ClientId}
@@ -35,7 +36,8 @@ class LeaderTest extends Specification with MockTools with Mockito with Logging 
                        committerConfigs: Iterable[CommitterConfig],
                        metricsLogger: MetricsLogger = MetricsLogger.defaultLogger) = {
     val leaderConfig = LeaderConfig()
-    val taskManager = new TaskManager(leaderConfig, committerConfigs)
+    val filterMap = Map ("kafkaCommitterId" -> new TopicFilter())
+    val taskManager = new TaskManager(leaderConfig, committerConfigs, filterMap)
     new LeaderFactory(leaderConfig,
       clientId, curatorFactory, taskManager, metricsLogger) {
     }
