@@ -4,7 +4,7 @@ import java.net.InetAddress
 
 import akka.actor.ActorSystem
 import akka.pattern.gracefulStop
-import com.box.castle.committer.api.{CommitterFactory, Filter}
+import com.box.castle.committer.api.{CommitterFactory, TopicFilter}
 import com.box.castle.consumer.offsetmetadatamanager.ZookeeperOffsetMetadataManagerFactory
 import com.box.castle.consumer.{CastleSimpleConsumerFactory, ClientId, ConsumerId}
 import com.box.castle.core.{CuratorFactory, util}
@@ -44,9 +44,9 @@ class Castle private (val castleConfig: CastleConfig, val metricsLogger: Metrics
     }
   }).toMap
 
-  val filterMap: Map[String, Filter] = committerFactoryMap map {
-    idCommitterFactory => {
-      idCommitterFactory._1 -> idCommitterFactory._2.createFilter()
+  val topicFilterMap: Map[String, TopicFilter] = committerFactoryMap map {
+    idCommitterFactoryPair => {
+      idCommitterFactoryPair._1 -> idCommitterFactoryPair._2.createTopicFilter()
     }
   }
   // Let's wire up our dependency tree...
@@ -89,7 +89,7 @@ class Castle private (val castleConfig: CastleConfig, val metricsLogger: Metrics
 
   val workerActorFactory = new WorkerActorFactory(fetcherActorFactory, workerFactory, castleConfig.committerConfigs, metricsLogger)
 
-  val taskManager = TaskManager(castleConfig.leaderConfig, castleConfig.committerConfigs, filterMap)
+  val taskManager = TaskManager(castleConfig.leaderConfig, castleConfig.committerConfigs, topicFilterMap)
 
   val leaderFactory = new LeaderFactory(castleConfig.leaderConfig,
     clientId,
