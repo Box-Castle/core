@@ -22,7 +22,8 @@ class TaskManagerTest extends Specification with Mockito with Logging with MockT
       "kafkaCommitter" -> new TopicFilter(),
       "esCommitter" -> new TopicFilter(),
       "xCommitter" -> new TopicFilter(),
-      "falseCommitter" -> new FalseTopicFilter())
+      "falseCommitter" -> new FalseTopicFilter(),
+      "splitCommitter" -> new SplitTopicFilter())
     new TaskManager(LeaderConfig(FiniteDuration(1000, TimeUnit.MILLISECONDS), FiniteDuration(500, TimeUnit.MILLISECONDS)), committerConfigs, filterMap)
   }
 
@@ -140,20 +141,23 @@ class TaskManagerTest extends Specification with Mockito with Logging with MockT
     val kafkaTopics = Set(performanceTopic, loginTopic)
 
     val committerConfigs = List(
-      createCommitterConfig(InitialOffset.latest, "kafkaCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))),
-      createCommitterConfig(InitialOffset.latest, "esCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))),
-      createCommitterConfig(InitialOffset.latest, "falseCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))))
+      createCommitterConfig(InitialOffset.latest, "kafkaCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "esCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "falseCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance","login"))),
+      createCommitterConfig(InitialOffset.latest, "splitCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))))
 
     val taskManager = getTasksManager(committerConfigs)
 
     "A topic that matches the filter should return true" in {
-      taskManager.matchCommitterTopicFilter(performanceTopic, "kafkaCommitter") shouldEqual true
-      taskManager.matchCommitterTopicFilter(performanceTopic, "esCommitter") shouldEqual true
-      taskManager.matchCommitterTopicFilter(performanceTopic, "falseCommitter") shouldEqual false
+      taskManager.isMatchingTopicFilter(performanceTopic, "kafkaCommitter") shouldEqual true
+      taskManager.isMatchingTopicFilter(performanceTopic, "esCommitter") shouldEqual true
+      taskManager.isMatchingTopicFilter(performanceTopic, "falseCommitter") shouldEqual false
+      taskManager.isMatchingTopicFilter(performanceTopic, "splitCommitter") shouldEqual true
 
-      taskManager.matchCommitterTopicFilter(loginTopic, "kafkaCommitter") shouldEqual true
-      taskManager.matchCommitterTopicFilter(loginTopic, "esCommitter") shouldEqual true
-      taskManager.matchCommitterTopicFilter(loginTopic, "falseCommitter") shouldEqual false
+      taskManager.isMatchingTopicFilter(loginTopic, "kafkaCommitter") shouldEqual true
+      taskManager.isMatchingTopicFilter(loginTopic, "esCommitter") shouldEqual true
+      taskManager.isMatchingTopicFilter(loginTopic, "falseCommitter") shouldEqual false
+      taskManager.isMatchingTopicFilter(loginTopic, "splitCommitter") shouldEqual false
 
     }
   }
@@ -174,6 +178,10 @@ class TaskManagerTest extends Specification with Mockito with Logging with MockT
       taskManager.matchTopicsRegex("""[A-Za-z]+""".r, performanceTopic, "esCommitter", Set("kafkaCommitter")) shouldEqual
         Set("kafkaCommitter", "esCommitter")
       taskManager.matchTopicsRegex("""[A-Za-z]+""".r, performanceTopic, "falseCommitter", Set("kafkaCommitter")) shouldEqual
+        Set("kafkaCommitter")
+      taskManager.matchTopicsRegex("""[A-Za-z]+""".r, performanceTopic, "splitCommitter", Set("kafkaCommitter")) shouldEqual
+        Set("kafkaCommitter", "splitCommitter")
+      taskManager.matchTopicsRegex("""[A-Za-z]+""".r, loginTopic, "splitCommitter", Set("kafkaCommitter")) shouldEqual
         Set("kafkaCommitter")
     }
   }
