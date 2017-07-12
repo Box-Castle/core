@@ -192,14 +192,18 @@ class TaskManagerTest extends Specification with Mockito with Logging with MockT
     val kafkaTopics = Set(performanceTopic, loginTopic)
 
     val committerConfigs = List(
-      createCommitterConfig(InitialOffset.latest, "kafkaCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))),
-      createCommitterConfig(InitialOffset.latest, "esCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))),
-      createCommitterConfig(InitialOffset.latest, "falseCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))))
+      createCommitterConfig(InitialOffset.latest, "kafkaCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "esCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "falseCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "splitCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))))
+
 
     val taskManager = getTasksManager(committerConfigs)
     "filter out topics as specified by the committer" in {
       taskManager.matchTopicsSet(Set("performance", "login"),performanceTopic,"esCommitter", Set("kafkaCommitter")) shouldEqual Set("kafkaCommitter", "esCommitter")
       taskManager.matchTopicsSet(Set("performance", "login"),performanceTopic,"falseCommitter", Set("kafkaCommitter")) shouldEqual Set("kafkaCommitter")
+      taskManager.matchTopicsSet(Set("performance", "login"),performanceTopic,"splitCommitter", Set("kafkaCommitter")) shouldEqual Set("splitCommitter","kafkaCommitter")
+      taskManager.matchTopicsSet(Set("performance", "login"),loginTopic,"splitCommitter", Set("kafkaCommitter")) shouldEqual Set("kafkaCommitter")
     }
   }
 
