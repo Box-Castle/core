@@ -1,22 +1,29 @@
 package com.box.castle.core.leader
 
-import com.box.castle.core.config.{LeaderConfig, CommitterConfig}
+import com.box.castle.committer.api.TopicFilter
+import com.box.castle.core.config.{CommitterConfig, LeaderConfig}
 import com.box.castle.core.worker.tasks.Task
 import org.slf4s.Logging
 
-import scala.collection.immutable.{TreeMap, Seq}
+import scala.collection.immutable.{Seq, TreeMap}
 import scala.util.Random
 import scala.util.matching.Regex
 import scala.collection.mutable
 
 object TaskManager {
-  def apply(leaderConfig: LeaderConfig, committerConfigs: Iterable[CommitterConfig]) =
-    new TaskManager(leaderConfig, committerConfigs)
+  def apply(
+             leaderConfig: LeaderConfig,
+             committerConfigs: Iterable[CommitterConfig],
+             topicFilterMap: Map[String, TopicFilter]) =
+    new TaskManager(leaderConfig, committerConfigs, topicFilterMap)
 }
 
 
 
-class TaskManager(val leaderConfig: LeaderConfig, val committerConfigs: Iterable[CommitterConfig]) extends Logging {
+class TaskManager(
+                   val leaderConfig: LeaderConfig,
+                   val committerConfigs: Iterable[CommitterConfig],
+                   topicFilterMap: Map[String, TopicFilter]) extends Logging {
 
   /**
    * Given a set of kafka topics and their partitions, this method will generate a set of tasks that match
@@ -59,18 +66,23 @@ class TaskManager(val leaderConfig: LeaderConfig, val committerConfigs: Iterable
       tasks
   }
 
-  private def matchTopicsRegex(topicsRegex: Regex, kafkaTopic: KafkaTopic, committerId: String, committerIds: Set[String]) = {
-    kafkaTopic.name match {
-      case topicsRegex(_*) => committerIds + committerId
-      case _ => committerIds
-    }
+  protected[leader] def matchTopicsRegex(topicsRegex: Regex, kafkaTopic: KafkaTopic, committerId: String, committerIds: Set[String]) = {
+      kafkaTopic.name match {
+        case topicsRegex(_*) => if (isMatchingTopicFilter(kafkaTopic,committerId)) committerIds + committerId else committerIds
+        case _ => committerIds
+      }
   }
 
-  private def matchTopicsSet(topicsSet: Set[String], kafkaTopic: KafkaTopic, committerId: String, committerIds: Set[String]) = {
-    if (topicsSet.contains(kafkaTopic.name))
+  protected[leader] def matchTopicsSet(topicsSet: Set[String], kafkaTopic: KafkaTopic, committerId: String, committerIds: Set[String]) = {
+    if (topicsSet.contains(kafkaTopic.name) && isMatchingTopicFilter(kafkaTopic, committerId))
       committerIds + committerId
     else
       committerIds
+  }
+
+  protected[leader] def isMatchingTopicFilter(kafkaTopic: KafkaTopic, committerId: String): Boolean = {
+    val topicFilter = topicFilterMap(committerId)
+    topicFilter.matches(kafkaTopic.name)
   }
 
   private class Workers(var workers: Map[String, Set[Task]], val tasksToAssign: Set[Task]) {

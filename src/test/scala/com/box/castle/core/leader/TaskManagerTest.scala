@@ -2,7 +2,8 @@ package com.box.castle.core.leader
 
 import java.util.concurrent.TimeUnit
 
-import com.box.castle.core.config.{InitialOffset, LeaderConfig, CommitterConfig}
+import com.box.castle.committer.api.TopicFilter
+import com.box.castle.core.config.{CommitterConfig, InitialOffset, LeaderConfig}
 import com.box.castle.core.mock.MockTools
 import com.box.castle.core.worker.tasks.Task
 import org.slf4s.Logging
@@ -16,8 +17,15 @@ import scala.concurrent.duration.FiniteDuration
 
 class TaskManagerTest extends Specification with Mockito with Logging with MockTools {
 
-  def getTasksManager(committerConfigs: Iterable[CommitterConfig]) =
-    new TaskManager(LeaderConfig(FiniteDuration(1000, TimeUnit.MILLISECONDS), FiniteDuration(500, TimeUnit.MILLISECONDS)), committerConfigs)
+  def getTasksManager(committerConfigs: Iterable[CommitterConfig]): TaskManager = {
+    val filterMap = Map(
+      "kafkaCommitter" -> new TopicFilter(),
+      "esCommitter" -> new TopicFilter(),
+      "xCommitter" -> new TopicFilter(),
+      "falseCommitter" -> new FalseTopicFilter(),
+      "splitCommitter" -> new SplitTopicFilter())
+    new TaskManager(LeaderConfig(FiniteDuration(1000, TimeUnit.MILLISECONDS), FiniteDuration(500, TimeUnit.MILLISECONDS)), committerConfigs, filterMap)
+  }
 
   "generateTasksToAssign" should {
     "use the tasks regex to match topic names if it is provided" in {
@@ -124,6 +132,78 @@ class TaskManagerTest extends Specification with Mockito with Logging with MockT
         Task("login", 9, Set("kafkaCommitter", "xCommitter")))
 
       tasks must_== expectedTasks
+    }
+  }
+
+  "matchCommitterTopicFilter" should {
+    val performanceTopic = KafkaTopic("performance", Set(0, 1))
+    val loginTopic = KafkaTopic("login", Set(8, 9))
+    val kafkaTopics = Set(performanceTopic, loginTopic)
+
+    val committerConfigs = List(
+      createCommitterConfig(InitialOffset.latest, "kafkaCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "esCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "falseCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance","login"))),
+      createCommitterConfig(InitialOffset.latest, "splitCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))))
+
+    val taskManager = getTasksManager(committerConfigs)
+
+    "A topic that matches the filter should return true" in {
+      taskManager.isMatchingTopicFilter(performanceTopic, "kafkaCommitter") shouldEqual true
+      taskManager.isMatchingTopicFilter(performanceTopic, "esCommitter") shouldEqual true
+      taskManager.isMatchingTopicFilter(performanceTopic, "falseCommitter") shouldEqual false
+      taskManager.isMatchingTopicFilter(performanceTopic, "splitCommitter") shouldEqual true
+
+      taskManager.isMatchingTopicFilter(loginTopic, "kafkaCommitter") shouldEqual true
+      taskManager.isMatchingTopicFilter(loginTopic, "esCommitter") shouldEqual true
+      taskManager.isMatchingTopicFilter(loginTopic, "falseCommitter") shouldEqual false
+      taskManager.isMatchingTopicFilter(loginTopic, "splitCommitter") shouldEqual false
+
+    }
+  }
+
+  "matchTopicsRegex" should {
+    val performanceTopic = KafkaTopic("performance", Set(0, 1))
+    val loginTopic = KafkaTopic("login", Set(8, 9))
+    val kafkaTopics = Set(performanceTopic, loginTopic)
+
+    val committerConfigs = List(
+      createCommitterConfig(InitialOffset.latest, "kafkaCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))),
+      createCommitterConfig(InitialOffset.latest, "esCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))),
+      createCommitterConfig(InitialOffset.latest, "falseCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance"))))
+
+    val taskManager = getTasksManager(committerConfigs)
+
+    "filter out topics as specified by the committer" in {
+      taskManager.matchTopicsRegex("""[A-Za-z]+""".r, performanceTopic, "esCommitter", Set("kafkaCommitter")) shouldEqual
+        Set("kafkaCommitter", "esCommitter")
+      taskManager.matchTopicsRegex("""[A-Za-z]+""".r, performanceTopic, "falseCommitter", Set("kafkaCommitter")) shouldEqual
+        Set("kafkaCommitter")
+      taskManager.matchTopicsRegex("""[A-Za-z]+""".r, performanceTopic, "splitCommitter", Set("kafkaCommitter")) shouldEqual
+        Set("kafkaCommitter", "splitCommitter")
+      taskManager.matchTopicsRegex("""[A-Za-z]+""".r, loginTopic, "splitCommitter", Set("kafkaCommitter")) shouldEqual
+        Set("kafkaCommitter")
+    }
+  }
+
+  "matchTopicsSet" should{
+    val performanceTopic = KafkaTopic("performance", Set(0, 1))
+    val loginTopic = KafkaTopic("login", Set(8, 9))
+    val kafkaTopics = Set(performanceTopic, loginTopic)
+
+    val committerConfigs = List(
+      createCommitterConfig(InitialOffset.latest, "kafkaCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "esCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "falseCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))),
+      createCommitterConfig(InitialOffset.latest, "splitCommitter", topicsRegexRaw=None, topicsSet=Some(Set("performance", "login"))))
+
+
+    val taskManager = getTasksManager(committerConfigs)
+    "filter out topics as specified by the committer" in {
+      taskManager.matchTopicsSet(Set("performance", "login"),performanceTopic,"esCommitter", Set("kafkaCommitter")) shouldEqual Set("kafkaCommitter", "esCommitter")
+      taskManager.matchTopicsSet(Set("performance", "login"),performanceTopic,"falseCommitter", Set("kafkaCommitter")) shouldEqual Set("kafkaCommitter")
+      taskManager.matchTopicsSet(Set("performance", "login"),performanceTopic,"splitCommitter", Set("kafkaCommitter")) shouldEqual Set("splitCommitter","kafkaCommitter")
+      taskManager.matchTopicsSet(Set("performance", "login"),loginTopic,"splitCommitter", Set("kafkaCommitter")) shouldEqual Set("kafkaCommitter")
     }
   }
 
