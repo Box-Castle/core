@@ -4,7 +4,6 @@
 ## Preface
 A lot has changed since Castle was written. You may want to look into [Kafka Streams](http://docs.confluent.io/current/streams/index.html) and [Kafka Connect](http://docs.confluent.io/2.0.0/connect/) as alternatives to Castle.
 
-
 ## What is Castle?
 Castle is a Scala framework that executes plugins called Committers which consume data from Kafka and write the data to some other destination.  At [Box](https://www.box.com/), we use Kafka as the central queuing component for a number of our data streams. Kafka serves as the buffer that can take on traffic bursts that might otherwise overwhelm downstream components. It also allows for flexibility with how we process and consume the data from multiple sources. Getting vast amounts of data into Kafka is easy. However, getting the data out in order to transform it and move it somewhere else is not as straightforward. Performing this operation in a robust manner ends up being a deceptively difficult problem with multiple gotchas that must be solved time and again by the code that is performing this consumption. This is where the Castle framework comes in. It allows engineers to write Committers that focus solely on data processing because the framework guarantees at least once delivery of all the messages in a Kafka stream to the committer code, which then has the sole responsibility of getting the messages to their final destination.
 
