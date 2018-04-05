@@ -129,7 +129,9 @@ with Mockito with MockTools with NoTimeConversions {
   val defaultMockTopicMetadata: Map[Int, TopicMetadataResponse] =
     Map(1 -> TopicMetadataResponse(Seq(topicAndPartitionMetadata, topicAndPartition2Metadata), 1),
       2 -> TopicMetadataResponse(Seq(topicAndPartitionMetadata, topicAndPartition2Metadata), 2),
-      3 -> TopicMetadataResponse(Seq(topicAndPartitionMetadata, topicAndPartition2Metadata), 3))
+      3 -> TopicMetadataResponse(Seq(topicAndPartitionMetadata, topicAndPartition2Metadata), 3),
+      4 -> TopicMetadataResponse(Seq(topicAndPartitionMetadata, topicAndPartition2Metadata), 4),
+      5 -> TopicMetadataResponse(Seq(topicAndPartitionMetadata, topicAndPartition2Metadata), 5))
 
 
   def createRouterActor[T <: akka.actor.Actor](mockMetricsLogger: MetricsLogger,
