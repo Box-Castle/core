@@ -44,6 +44,8 @@ Each Committer can be configured so it consumes a specific set of topics from Ka
 
 In this diagram, we have three different types of committers: **Elastic Search**, **S3**, and **HDFS** consuming data from the _Foo_ and _Bar_ topics.  However, for the **ES Committer**, we have configured two separate instances.  The first **ES Committer** is configured to only consume the _Foo_ topic and writes it to ES Cluster 1. The second **ES Committer** is configured to consume data from both the _Foo_ and _Bar_ topics and writes the data to ES Cluster 2.
 
+## Caste State Diagram
+![Castle State Diagram](img/castle_simplified.png)
 
 ## Support
 
